@@ -1,11 +1,9 @@
 %option noyywrap nounput
 %{
 #include <iostream>
+#include <memory>
 #include <cstring>
 #include "Parser.hpp"
-#include "SymbolTable.hpp"
-#include "SymbolTable.hpp"
-#include <memory>
 %}
 
 whitespace [ \r\f\v\t]
@@ -33,12 +31,15 @@ string     "\"".*"\""
 ";" { return yytext[0]; }
 
 "="  { return ATRIBI; }
-">"  { yylval.fn = 1;  return CMP; }
-"<"  { yylval.fn = 2;  return CMP; }
-"<>" { yylval.fn = 3;  return CMP; }
-"==" { yylval.fn = 4;  return CMP; }
-">=" { yylval.fn = 5;  return CMP; }
-"<=" { yylval.fn = 6;  return CMP; }
+
+">"  { yylval.fn = 1; return CMP; }
+"<"  { yylval.fn = 2; return CMP; }
+"<>" { yylval.fn = 3; return CMP; }
+">=" { yylval.fn = 4; return CMP; }
+"<=" { yylval.fn = 5; return CMP; }
+
+"==" { return EQUAL; }
+"!=" { return DIFF;  }
 
 "++" { yylval.fn = 1; return ATRIBS; }
 "--" { yylval.fn = 2; return ATRIBS; }
@@ -48,8 +49,8 @@ string     "\"".*"\""
 "/=" { yylval.fn = 4; return ATRIB; }
 "%=" { yylval.fn = 5; return ATRIB; }
 
-"&&" { yylval.fn = 1; return LOG; }
-"||" { yylval.fn = 2; return LOG; }
+"&&" { return AND; }
+"||" { return OR;  }
 "!"  { return NOT; }
 
 "int"    { return T_INT;    }
