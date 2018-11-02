@@ -1,5 +1,5 @@
 def bubblesort() {
-  if(a) {
+  if(a + 5) {
   }else {
   } 
 }

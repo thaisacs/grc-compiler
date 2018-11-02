@@ -1,3 +1,3 @@
 #include "SymbolTable.hpp"
 
-using namespace compiler;
+using namespace grc;

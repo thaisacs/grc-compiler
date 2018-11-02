@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 
-namespace compiler {
+namespace grc {
   class Symbol {
     std::string Name;
   public:

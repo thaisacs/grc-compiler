@@ -2,39 +2,47 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/ADT/STLExtras.h"
-#include <iostream>
+
 #include "AST.hpp"
+
+#include <iostream>
+#include <memory>
+#include <map>
 
 extern int yylex();
 extern llvm::LLVMContext TheContext;
 extern std::unique_ptr<llvm::Module> TheModule;
+
 void yyerror(const char *s);
+
 %}
 
 %union {
-  char *s;
-  char *o;
-  int n;  
+  char* str;
+  int num;  
   int fn;
+  void* E;
 }
 
-%token <s> IDENTIFIER 
-%token <o> STRING
-%token <n> NUMBER 
+%token DEF FOR IF READ RETURN SKIP STOP
+       VAR WHILE WRITE TRUE FALSE EOL 
+       ATRIBI T_INT T_BOOL T_STRING
 
-%token DEF FOR IF READ RETURN SKIP STOP VAR WHILE WRITE TRUE FALSE 
-%token EOL ATRIBI T_INT T_BOOL T_STRING
-
+%token <str> IDENTIFIER 
+%token <num> NUMBER 
 %token <fn> ATRIBS
 %token <fn> ATRIB
+%token STRING
 
 %nonassoc END_ELSE 
 %nonassoc ELSE
 
+%left '+' '-'
+%left '*' '%' '/'
 %left  <fn> CMP LOG
-%left '*' '%' '/' '+' '-' '<' '>' 
 %right NOT
 
+%type <E> exp
 %start program
 
 %%
@@ -61,9 +69,9 @@ decSub: decProc {}
       ;
 
 decProc: DEF IDENTIFIER '(' ')' block { 
-              auto proto = llvm::make_unique<compiler::PrototypeAST>($2); 
+              //auto proto = llvm::make_unique<grc::PrototypeAST>("fd"); 
               //auto b = llvm::make_unique<>();
-              //auto PrcAST = llvm::make_unique<compiler::ProcedureAST>(std::move(p));
+              //auto PrcAST = llvm::make_unique<grc::ProcedureAST>(std::move(p));
               //PrcAST->codegen(TheContext);
               //F->print(llvm::errs());
               //fprintf(stderr, "\n");
@@ -106,26 +114,26 @@ simpleStmt: stmtIf {}
           | stmtCallProc {}
           ;
 
-stmtIf: IF '(' exps ')' stmts %prec END_ELSE {}
-      | IF '(' exps ')' stmts ELSE stmts {}
+stmtIf: IF '(' exp ')' stmts %prec END_ELSE {}
+      | IF '(' exp ')' stmts ELSE stmts {}
       ;
 
-stmtWhile: WHILE '(' exps ')' stmts {}
+stmtWhile: WHILE '(' exp ')' stmts {}
          ;
 
-stmtFor: FOR '(' atrib_init ';' exps ';' atrib ')' stmts {}
+stmtFor: FOR '(' atrib_init ';' exp ';' atrib ')' stmts {}
        ;
 
 stmtAtrib: atrib ';' {}
          | atrib_init ';' {}
          ;
         
-atrib: IDENTIFIER ATRIB exps {}
+atrib: IDENTIFIER ATRIB exp {}
      | IDENTIFIER ATRIBS {}
      | ATRIBS IDENTIFIER {}
      ;
 
-atrib_init: IDENTIFIER ATRIBI exps { }
+atrib_init: IDENTIFIER ATRIBI exp { }
           ;
 
 stmtCallProc: callProc ';' {}
@@ -137,8 +145,8 @@ callProc: IDENTIFIER '(' lists ')' {}
 lists: /*empty */
      | list {};
 
-list: exps {}
-    | list ',' exps {};
+list: exp {}
+    | list ',' exp {};
 /*
  *list of varible identifier
  */
@@ -175,23 +183,23 @@ subListOfNumbers: /*empty*/
                 ;
 /*
  *expression
-*/ 
-exps: '(' exp ')'
-    | exp;
-
-exp: exps '+' exps {}
-   | exps '*' exps {}
-   | exps '-' exps {}
-   | exps '/' exps {}
-   | exps '%' exps {}
-   | exps CMP exps {}
-   | exps LOG exps {}
-   | NOT exps      {}
-   | callProc      {}
-   | NUMBER        {}
-   | IDENTIFIER    {}
-   | TRUE          {}
-   | FALSE         {}
+*/
+exp: '(' exp ')' {}
+   | exp '+' exp { std::unique_ptr<grc::ExprAST> e(reinterpret_cast<grc::ExprAST*>($1));
+                   std::unique_ptr<grc::ExprAST> d(reinterpret_cast<grc::ExprAST*>($3));
+                   $$ = new grc::BinaryExprAST('+', std::move(e), std::move(d)); }
+   | exp '*' exp {}
+   | exp '-' exp {}
+   | exp '/' exp {}
+   | exp '%' exp {}
+   | exp CMP exp {}
+   | exp LOG exp {}
+   | NOT exp     {}
+   | NUMBER      { $$ = new grc::NumberExprAST($1); }
+   | IDENTIFIER  { $$ = new grc::VariableExprAST($1); }
+   | TRUE        { std::cout << "TRUE" << std::endl; }
+   | FALSE       { std::cout << "FALSE" << std::endl; }
+/* | callProc      {}*/
    ;
 %%
 

@@ -1,5 +1,4 @@
 %option noyywrap nounput
-
 %{
 #include <iostream>
 #include <cstring>
@@ -71,12 +70,12 @@ string     "\"".*"\""
 "while"  { return WHILE;  }
 "write"  { return WRITE;  }
 
-{identifier} { yylval.s = new char[std::strlen(yytext)];
-               std::strcpy(yylval.s, yytext); 
+{identifier} { yylval.str = new char[std::strlen(yytext)];
+               std::strcpy(yylval.str, yytext);
                return IDENTIFIER;
              }
-{number}     { yylval.n = atoi(yytext); return NUMBER; }
-{string}     { yylval.o = yytext; return STRING;       }
+{number}     { yylval.num = atoi(yytext); return NUMBER; }
+{string}     { /*yylval.str = yytext;*/ return STRING;       }
 
 {comment}    {             }
 {whitespace} {             }

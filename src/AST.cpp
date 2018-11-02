@@ -1,6 +1,6 @@
 #include "AST.hpp"
 
-using namespace compiler;
+using namespace grc;
 
 llvm::Value* ProcedureAST::codegen(llvm::LLVMContext &TheContext) {
   int e = 5;

@@ -1,6 +1,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include <iostream>
+#include <map>
 #include <memory>
 
 extern int yyparse();

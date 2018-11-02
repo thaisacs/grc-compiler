@@ -9,9 +9,9 @@
 #include <vector>
 #include <memory>
 
-namespace compiler {
+namespace grc {
   enum Type {INT, STRING, BOOL};
- 
+  
   class ExprAST {
   public:
     virtual ~ExprAST() = default;
@@ -22,6 +22,12 @@ namespace compiler {
   public:
     NumberExprAST(int Val) : Val(Val) {}
   };
+  
+  class VariableExprAST {
+    std::string Name;
+  public:
+    VariableExprAST(const std::string &Name) : Name(Name) {}
+  };
 
   class BinaryExprAST : public ExprAST {
     char Op;
@@ -31,15 +37,6 @@ namespace compiler {
         std::unique_ptr<ExprAST> RHS) : Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
   };
 
-  //class DecVarAST {
-  //  std::vector<std::string> Names;
-  //  Type T;
-  //public:
-  //  DecVarAST(std::vector<std::string> Names, Type T) : 
-  //    Names(Names), T(T) {}
-  //  llvm::GlobalVariable* codegen(llvm::LLVMContext &TheContext);
-  //};
-  
   class PrototypeAST {
     std::string Name;
     std::vector<std::string> Args;
