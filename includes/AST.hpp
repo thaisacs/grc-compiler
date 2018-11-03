@@ -23,29 +23,30 @@ namespace grc {
     int Val;
   public:
     NumberExprAST(int Val) : Val(Val) {}
-    void toPrint() override { std::cout << Val << ' '; } 
+    void toPrint() override; 
   };
 
   class BooleanExprAST: public ExprAST {
     bool Bool;
   public:
     BooleanExprAST(bool Bool) : Bool(Bool) {}
-    void toPrint() override { std::cout << Bool << ' '; }
+    void toPrint() override;
   };
 
   class VariableExprAST: public ExprAST {
     std::string Name;
   public:
     VariableExprAST(const std::string &Name) : Name(Name) {}
-    void toPrint() override { std::cout << Name << ' '; }
+    void toPrint() override;
   };
 
   class UnaryExprAST: public ExprAST {
-    char Op;
+    std::string Op;
     std::unique_ptr<ExprAST> Operand;
   public:
-    UnaryExprAST(char Op, std::unique_ptr<ExprAST> Operand) : Op(Op), Operand(std::move(Operand)) {}
-    void toPrint() override { std::cout << Op << ' '; Operand->toPrint(); };
+    UnaryExprAST(const std::string &Op, std::unique_ptr<ExprAST> Operand) : 
+      Op(Op), Operand(std::move(Operand)) {}
+    void toPrint() override;
   };
 
   class BinaryExprAST : public ExprAST {
@@ -54,7 +55,7 @@ namespace grc {
   public:
     BinaryExprAST(const std::string &Op, std::unique_ptr<ExprAST> LHS,
         std::unique_ptr<ExprAST> RHS) : Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
-    void toPrint() override { std::cout << Op << ' '; LHS->toPrint(); RHS->toPrint(); }
+    void toPrint() override;
   };
 
   class IfExprAST : public ExprAST {
@@ -62,7 +63,17 @@ namespace grc {
   public:
     IfExprAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<ExprAST> Then, 
         std::unique_ptr<ExprAST> Else) : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
-    void toPrint() override { Cond->toPrint(); }
+    void toPrint() override;
+  };
+
+  class BlockAST : public ExprAST {
+    std::vector<std::unique_ptr<ExprAST>> exps;
+  public:
+    BlockAST() {}; 
+    //BlockAST(std::vector<std::unique_ptr<ExprAST>> cmds) : 
+    //  cmds(std::move(cmds)) {}; 
+    void addExprAST(std::unique_ptr<ExprAST> e);
+    void toPrint() override; 
   };
 
   class PrototypeAST {
@@ -75,18 +86,12 @@ namespace grc {
     llvm::Function* codegen();
   };
 
-  class BodyAST {
-    std::vector<std::unique_ptr<ExprAST*>> Body;
-  public:
-   BodyAST(); 
-  };
-
   class ProcedureAST {
     std::unique_ptr<PrototypeAST> Proto;
-    std::unique_ptr<BodyAST> Body; 
+    //std::unique_ptr<BodyAST> Body; 
   public:
-    ProcedureAST(std::unique_ptr<PrototypeAST> Proto) :
-    Proto(std::move(Proto)) {}
+    ProcedureAST(std::unique_ptr<PrototypeAST> Proto) : 
+      Proto(std::move(Proto)) {}
     llvm::Value* codegen(llvm::LLVMContext &TheContext);
   };
 }

@@ -6,10 +6,14 @@
   #include "llvm/IR/LLVMContext.h"
   #include "llvm/IR/Module.h"
   #include "llvm/ADT/STLExtras.h"
+  
   #include <iostream>
   #include <memory>
   #include <map>
+  #include <cstdint>
+  
   #include "AST.hpp"
+  #include "Util.hpp"
 
   extern int yylex();
   extern llvm::LLVMContext TheContext;
@@ -23,8 +27,9 @@
 %union {
   char* str;
   int num;  
-  int fn;
+  uint8_t fn;
   grc::ExprAST* E;
+  grc::BlockAST* B;
 }
 
 %token DEF FOR IF READ RETURN SKIP STOP VAR WHILE WRITE TRUE FALSE EOL 
@@ -44,13 +49,16 @@
 %left '*' '%' '/'
 %right NOT
 
-%type <E> exp stmts stmtIf commands block
+%type <E> exp cmd cmdIf body
+%type <B> cmds block
 %%
 
+program: block { $1->toPrint(); };
+/*
 program: decs 
        ;
 
-decs: /*empty*/
+decs: /*empty
     | decs decVar { }
     | decs decSub { }
     ;
@@ -102,32 +110,35 @@ parameter: IDENTIFIER {}
          | IDENTIFIER '[' ']' {}
          ;
 */
-block: '{' decs commands '}' { $$ = $3; }
+block: '{' cmds '}' { $$ = $2; }
      ;
 
-commands: /*empty*/      { $$ = nullptr; }
-        | commands stmts { $$ = $2; };
+cmds: /*empty*/  { $$ = HandleCmd();           }
+    | cmds cmd   { HandleCmd($1, $2); $$ = $1; }
+    | cmds block { HandleCmd($1, $2); $$ = $1; }
+    ;
 
-stmts: simpleStmt { /*default*/ }
-     | block      { /*default*/ };
+cmd: simpleCmd { /*default*/ }
 
-simpleStmt: stmtIf       { /*default*/ }
-          | stmtWhile    { /*default*/ }
-          | stmtFor      { /*default*/ }
-          | stmtAtrib    { /*default*/ }
-          | stmtCallProc { /*default*/ }
-          ;
+body: block { /*default*/ }
+    | cmd   { /*default*/ }
+    ;
 
-stmtIf: IF '(' exp ')' stmts %prec END_ELSE { std::unique_ptr<grc::ExprAST> exp($3);
-                                              $$ = new grc::IfExprAST(std::move(exp), nullptr, nullptr); }
-      | IF '(' exp ')' stmts ELSE stmts { std::unique_ptr<grc::ExprAST> exp($3);
-                                          $$ = new grc::IfExprAST(std::move(exp), nullptr, nullptr); }
-      ;
-
-stmtWhile: WHILE '(' exp ')' stmts {}
+simpleCmd: cmdIf       { /*default*/ }
+         | cmdWhile    { /*default*/ }
+   /*    | cmdFor      { /*default }
+         | cmdAtrib    { /*default }
+         | cmdCallProc { /*default }*/
          ;
 
-stmtFor: FOR '(' atrib_init ';' exp ';' atrib ')' stmts {}
+cmdIf: IF '(' exp ')' body %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }
+     | IF '(' exp ')' body ELSE body      { $$ = HandleCmdIf($3, $5, $7); }
+     ;
+
+cmdWhile: WHILE '(' exp ')' body {}
+        ;
+/*
+stmtFor: FOR '(' atrib_init ';' exp ';' atrib ')' {}
        ;
 
 stmtAtrib: atrib ';' {}
@@ -148,19 +159,19 @@ stmtCallProc: callProc ';' {}
 callProc: IDENTIFIER '(' lists ')' {} 
         ;
 
-lists: /*empty */
+lists: /*empty 
      | list {};
 
 list: exp {}
     | list ',' exp {};
 /*
  *list of varible identifier
- */
+ 
 listOfVarIdent: var subListOfVarIdent {}
               | ',' var subListOfVarIdent {}
               ;
 
-subListOfVarIdent: /*empty*/
+subListOfVarIdent: /*empty
                  | listOfVarIdent {}
 
 var: SimpleVar {}
@@ -177,72 +188,35 @@ SimpleInitVar: atrib_init {}
 ArrayVar: IDENTIFIER '[' NUMBER ']' ArrayInitVar { }
         ;
 
-ArrayInitVar: /*empty*/
+ArrayInitVar: /*empty
             | ATRIBI listOfNumbers { }
             ;
 
 listOfNumbers: '{' NUMBER subListOfNumbers '}' {}
              ;
 
-subListOfNumbers: /*empty*/
+subListOfNumbers: /*empty
                 | ',' NUMBER subListOfNumbers {}
                 ;
 /*
  *expression
 */
-exp: '(' exp ')' { $$ = $2; }
-   | exp '+' exp { std::unique_ptr<grc::ExprAST> e($1);
-                   std::unique_ptr<grc::ExprAST> d($3);
-                   $$ = new grc::BinaryExprAST("+", std::move(e), std::move(d)); }
-   | exp '*' exp { std::unique_ptr<grc::ExprAST> e($1);
-                   std::unique_ptr<grc::ExprAST> d($3);
-                   $$ = new grc::BinaryExprAST("*", std::move(e), std::move(d)); }
-   | exp '-' exp { std::unique_ptr<grc::ExprAST> e($1);
-                   std::unique_ptr<grc::ExprAST> d($3);
-                   $$ = new grc::BinaryExprAST("-", std::move(e), std::move(d)); }
-   | exp '/' exp { std::unique_ptr<grc::ExprAST> e($1);
-                   std::unique_ptr<grc::ExprAST> d($3);
-                   $$ = new grc::BinaryExprAST("/", std::move(e), std::move(d)); }
-   | exp '%' exp { std::unique_ptr<grc::ExprAST> e($1);
-                   std::unique_ptr<grc::ExprAST> d($3);
-                   $$ = new grc::BinaryExprAST("%", std::move(e), std::move(d)); }
-   | exp CMP exp { std::unique_ptr<grc::ExprAST> e($1);
-                   std::unique_ptr<grc::ExprAST> d($3);
-                   switch($2) {
-                    case 1:
-                      $$ = new grc::BinaryExprAST(">", std::move(e), std::move(d));
-                      break;
-                    case 2:
-                      $$ = new grc::BinaryExprAST("<", std::move(e), std::move(d));
-                      break;
-                    case 3:
-                      $$ = new grc::BinaryExprAST("<>", std::move(e), std::move(d));
-                      break;
-                    case 4:
-                      $$ = new grc::BinaryExprAST(">=", std::move(e), std::move(d));
-                      break;
-                    case 5:
-                      $$ = new grc::BinaryExprAST("<=", std::move(e), std::move(d));
-                   } 
-                 }
-   | exp EQUAL exp { std::unique_ptr<grc::ExprAST> e($1);
-                     std::unique_ptr<grc::ExprAST> d($3);
-                     $$ = new grc::BinaryExprAST("==", std::move(e), std::move(d)); }
-   | exp DIFF exp  { std::unique_ptr<grc::ExprAST> e($1);
-                     std::unique_ptr<grc::ExprAST> d($3);
-                     $$ = new grc::BinaryExprAST("!=", std::move(e), std::move(d)); }
-   | exp AND exp   { std::unique_ptr<grc::ExprAST> e($1);
-                     std::unique_ptr<grc::ExprAST> d($3);
-                     $$ = new grc::BinaryExprAST("&&", std::move(e), std::move(d)); }
-   | exp OR exp    { std::unique_ptr<grc::ExprAST> e($1);
-                     std::unique_ptr<grc::ExprAST> d($3);
-                     $$ = new grc::BinaryExprAST("||", std::move(e), std::move(d)); }
-   | NOT exp       { std::unique_ptr<grc::ExprAST> d($2);
-                     $$ = new grc::UnaryExprAST('!', std::move(d)); }
-   | NUMBER        { $$ = new grc::NumberExprAST($1);      }
-   | IDENTIFIER    { $$ = new grc::VariableExprAST($1);    }
-   | TRUE          { $$ = new grc::BooleanExprAST(true);   }
-   | FALSE         { $$ = new grc::BooleanExprAST(false);  }
+exp: '(' exp ')'   { $$ = $2;                             }
+   | exp '+' exp   { $$ = HandleExpression("+", $1, $3);  }
+   | exp '*' exp   { $$ = HandleExpression("*", $1, $3);  }
+   | exp '-' exp   { $$ = HandleExpression("-", $1, $3);  }
+   | exp '/' exp   { $$ = HandleExpression("/", $1, $3);  }
+   | exp '%' exp   { $$ = HandleExpression("%", $1, $3);  }
+   | exp CMP exp   { $$ = HandleExpression($2, $1, $3);   }
+   | exp EQUAL exp { $$ = HandleExpression("==", $1, $3); }
+   | exp DIFF exp  { $$ = HandleExpression("!=", $1, $3); }
+   | exp AND exp   { $$ = HandleExpression("&&", $1, $3); }
+   | exp OR exp    { $$ = HandleExpression("||", $1, $3); }
+   | NOT exp       { $$ = HandleExpression("!", $2);      }
+   | NUMBER        { $$ = new grc::NumberExprAST($1);     }
+   | IDENTIFIER    { $$ = new grc::VariableExprAST($1);   }
+   | TRUE          { $$ = new grc::BooleanExprAST(true);  }
+   | FALSE         { $$ = new grc::BooleanExprAST(false); }
 /* | callProc    {}*/
    ;
 %%
