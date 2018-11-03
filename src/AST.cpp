@@ -32,21 +32,26 @@ void UnaryExprAST::toPrint() {
 }
 
 void BinaryExprAST::toPrint() {
-  std::cout << Op << ' ';
   LHS->toPrint();
+  std::cout << Op << ' ';
   RHS->toPrint();
 }
 
 void IfExprAST::toPrint() {
+  std::cout << "\nIf (";
   Cond->toPrint();
+  std::cout << ")";
   Then->toPrint();
+  std::cout << "\n";
 }
 
 void BlockAST::toPrint() {
+  std::cout << "\nBlock\n";
   for(int i = 0; i < exps.size(); i++) {
     exps[i]->toPrint();
     std::cout << "\n";
   }
+  std::cout << "End Block\n";
 }
 /***********
  * codegen *

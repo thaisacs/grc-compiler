@@ -1,5 +1,7 @@
 %code requires {
   #include "AST.hpp"
+  #include "Util.hpp"
+  #include "SymbolTable.hpp"
 }
 
 %{
@@ -14,10 +16,12 @@
   
   #include "AST.hpp"
   #include "Util.hpp"
+  #include "Scope.hpp"
 
   extern int yylex();
   extern llvm::LLVMContext TheContext;
   extern std::unique_ptr<llvm::Module> TheModule;
+  extern grc::Scope S;  
 
   void yyerror(const char *s);
 %}
@@ -25,61 +29,66 @@
 %start program
 
 %union {
-  char* str;
-  int num;  
-  uint8_t fn;
+  char* S;
+  int N;  
+  uint8_t F;
   grc::ExprAST* E;
   grc::BlockAST* B;
+  grc::Type* T;
+  Parameters* PS;
+  Parameter* P;
 }
-
-%token DEF FOR IF READ RETURN SKIP STOP VAR WHILE WRITE TRUE FALSE EOL 
-       ATRIBI T_INT T_BOOL T_STRING STRING
-%token <str> IDENTIFIER 
-%token <num> NUMBER 
-%token <fn>  ATRIBS ATRIB
 
 %nonassoc END_ELSE 
 %nonassoc ELSE
 
+%token DEF FOR IF READ RETURN SKIP STOP VAR WHILE WRITE TRUE FALSE
+%token WORD ASSIGN_INIT TYPE_INT TYPE_BOOL TYPE_STRING
+
+%token <S> IDENTIFIER 
+%token <N> NUMBER 
+%token <F> ASSIGN_STEP ASSIGN
+
 %left OR
 %left AND 
 %left EQUAL DIFF
-%left <fn> CMP
+%left <F> CMP
 %left '+' '-'
 %left '*' '%' '/'
 %right NOT
 
 %type <E> exp cmd cmdIf body
 %type <B> cmds block
+%type <P> parameter
+%type <PS> parameters subParameter listOfParameters
+%type <T> type
 %%
 
-program: block { $1->toPrint(); };
-/*
 program: decs 
        ;
 
-decs: /*empty
-    | decs decVar { }
+decs: /*empty*/
+/*  | decs decVar { } */
     | decs decSub { }
     ;
 
+/*
 decVar: VAR listOfVarIdent ':' type ';' {}
       ;
+*/
 
-type: T_INT {}
-    | T_BOOL {}
-    | T_STRING {}
-    | T_STRING '[' NUMBER ']' {}
+prototype: DEF IDENTIFIER '(' listOfParameters ')' { HandlePrototype($2, $4); }
+/*       | DEF IDENTIFIER '(' ')' ':' type { HandlePrototype($2, grc::INT);  } */
+         ; 
+
+type: TYPE_INT                   { $$ = HandleType(grc::INT, 0);     }
+    | TYPE_BOOL                  { $$ = HandleType(grc::BOOL, 0);    }
+    | TYPE_STRING                { $$ = HandleType(grc::STRING, 0);  }
+    | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::STRING, $3); }
     ;
 
-decSub: decProc {}
-      | decFunc {}
-      ;
-
-decProc: DEF IDENTIFIER '(' ')' block {
-              std::cout << $2 << std::endl; 
-              $5->toPrint();
-              std::cout << "\n";
+decSub: prototype block {
+              //$5->toPrint();
               //auto proto = llvm::make_unique<grc::PrototypeAST>("fd"); 
               //auto b = llvm::make_unique<>();
               //auto PrcAST = llvm::make_unique<grc::ProcedureAST>(std::move(p));
@@ -89,27 +98,23 @@ decProc: DEF IDENTIFIER '(' ')' block {
             }
        ;
 
-decFunc: DEF IDENTIFIER '(' ')' ':' type block { std::cout << $2 << std::endl;
-                                               }
-       ;
-/*
-listOfParameters: /*empty
-                | parameters ':' TYPE listOfParameters {}
-                | ';' parameters ':' TYPE listOfParameters {}
+listOfParameters: /*empty*/                                { $$ = HandleListOfParams();               }
+                | listOfParameters parameters ':' type     { HandleListOfParams($1, $2, $4); $$ = $1; }
+                | listOfParameters ';' parameters ':' type { HandleListOfParams($1, $3, $5); $$ = $1; }
                 ;
 
-parameters: parameter subParameter
-          | ',' parameter subParameter {}
+parameters: subParameter parameter     { HandleParameters($1, $2); $$ = $1; }
+          | subParameter ',' parameter { HandleParameters($1, $3); $$ = $1; }
           ;
 
-subParameter: /*empty
-            | parameters {}
+subParameter: /*empty*/  { $$ = HandleParameters(); }
+            | parameters { /*default*/              }
             ;
 
-parameter: IDENTIFIER {}
-         | IDENTIFIER '[' ']' {}
+parameter: IDENTIFIER         { $$ = HandleParameter($1, false); }
+         | IDENTIFIER '[' ']' { $$ = HandleParameter($1, true);  }
          ;
-*/
+
 block: '{' cmds '}' { $$ = $2; }
      ;
 
@@ -126,8 +131,8 @@ body: block { /*default*/ }
 
 simpleCmd: cmdIf       { /*default*/ }
          | cmdWhile    { /*default*/ }
+         | cmdAssign   { /*default*/ }
    /*    | cmdFor      { /*default }
-         | cmdAtrib    { /*default }
          | cmdCallProc { /*default }*/
          ;
 
@@ -140,19 +145,19 @@ cmdWhile: WHILE '(' exp ')' body {}
 /*
 stmtFor: FOR '(' atrib_init ';' exp ';' atrib ')' {}
        ;
-
-stmtAtrib: atrib ';' {}
-         | atrib_init ';' {}
+*/
+cmdAssign: assign ';'     {}
+         | assignInit ';' {}
          ;
         
-atrib: IDENTIFIER ATRIB exp {}
-     | IDENTIFIER ATRIBS {}
-     | ATRIBS IDENTIFIER {}
-     ;
+assign: IDENTIFIER ASSIGN exp {}
+      | IDENTIFIER ASSIGN_STEP {}
+      | ASSIGN_STEP IDENTIFIER {}
+      ;
 
-atrib_init: IDENTIFIER ATRIBI exp { }
+assignInit: IDENTIFIER ASSIGN_INIT exp { /*$$ = HandleExpression("=", nullptr, $3);*/ }
           ;
-
+/*
 stmtCallProc: callProc ';' {}
             ;
             
@@ -225,3 +230,4 @@ void yyerror(const char *s) {
   printf("\nerror: %s\n", s);
   exit(1);
 }
+

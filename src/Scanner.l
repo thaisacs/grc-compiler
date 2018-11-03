@@ -30,32 +30,32 @@ string     "\"".*"\""
 "," |
 ";" { return yytext[0]; }
 
-"="  { return ATRIBI; }
-
-">"  { yylval.fn = 1; return CMP; }
-"<"  { yylval.fn = 2; return CMP; }
-"<>" { yylval.fn = 3; return CMP; }
-">=" { yylval.fn = 4; return CMP; }
-"<=" { yylval.fn = 5; return CMP; }
+">"  { yylval.F = 1; return CMP; }
+"<"  { yylval.F = 2; return CMP; }
+"<>" { yylval.F = 3; return CMP; }
+">=" { yylval.F = 4; return CMP; }
+"<=" { yylval.F = 5; return CMP; }
 
 "==" { return EQUAL; }
 "!=" { return DIFF;  }
 
-"++" { yylval.fn = 1; return ATRIBS; }
-"--" { yylval.fn = 2; return ATRIBS; }
-"+=" { yylval.fn = 1; return ATRIB; }
-"-=" { yylval.fn = 2; return ATRIB; }
-"*=" { yylval.fn = 3; return ATRIB; }
-"/=" { yylval.fn = 4; return ATRIB; }
-"%=" { yylval.fn = 5; return ATRIB; }
+"="  { return ASSIGN_INIT; }
+"++" { yylval.F = 1; return ASSIGN_STEP; }
+"--" { yylval.F = 2; return ASSIGN_STEP; }
+
+"+=" { yylval.F = 1; return ASSIGN; }
+"-=" { yylval.F = 2; return ASSIGN; }
+"*=" { yylval.F = 3; return ASSIGN; }
+"/=" { yylval.F = 4; return ASSIGN; }
+"%=" { yylval.F = 5; return ASSIGN; }
 
 "&&" { return AND; }
 "||" { return OR;  }
 "!"  { return NOT; }
 
-"int"    { return T_INT;    }
-"bool"   { return T_BOOL;   }
-"string" { return T_STRING; }
+"int"    { return TYPE_INT;    }
+"bool"   { return TYPE_BOOL;   }
+"string" { return TYPE_STRING; }
 
 "def"    { return DEF;    }
 "else"   { return ELSE;   }
@@ -71,12 +71,12 @@ string     "\"".*"\""
 "while"  { return WHILE;  }
 "write"  { return WRITE;  }
 
-{identifier} { yylval.str = new char[std::strlen(yytext)];
-               std::strcpy(yylval.str, yytext);
+{identifier} { yylval.S = new char[std::strlen(yytext)];
+               std::strcpy(yylval.S, yytext);
                return IDENTIFIER;
              }
-{number}     { yylval.num = atoi(yytext); return NUMBER; }
-{string}     { /*yylval.str = yytext;*/ return STRING;       }
+{number}     { yylval.N = atoi(yytext); return NUMBER; }
+{string}     { /*yylval.str = yytext;*/ return WORD;     }
 
 {comment}    {             }
 {whitespace} {             }

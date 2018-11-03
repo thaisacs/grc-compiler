@@ -11,8 +11,6 @@
 #include <memory>
 
 namespace grc {
-  enum Type {INT, STRING, BOOL};
-  
   class ExprAST {
   public:
     virtual ~ExprAST() = default;
