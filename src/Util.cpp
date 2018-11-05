@@ -2,7 +2,7 @@
 
 using namespace grc;
 
-extern Scope S;
+extern std::shared_ptr<grc::Scope> S;
 
 ExprAST* HandleExpression(const std::string &Op, ExprAST *Operand) {
   std::unique_ptr<ExprAST> UPOp(Operand);
@@ -59,26 +59,21 @@ void HandleCmd(BlockAST *Block, ExprAST *Expr) {
 }
 
 void HandlePrototype(const std::string Name, Parameters* Params) {
-  std::unique_ptr<ProcedureSymbol> UNProc = std::make_unique<ProcedureSymbol>();
-  S.insert(Name, std::move(UNProc));
-  
+  //insert procedure in symbol table
+  std::unique_ptr<ProcedureSymbol> UPProc = std::make_unique<ProcedureSymbol>();
+  S->insert(Name, std::move(UPProc));
+  //start new scope
+  S->initializeScope();
+  //insert args in symbol table
   for(int i = 0; i < Params->ListOfParams.size(); i++) {
-    Params->ListOfParams[i]->PrimitiveType->toPrint();
+    std::unique_ptr<Type> UPType(Params->ListOfParams[i]->T->copy());
+    std::unique_ptr<VariableSymbol> UPVar = std::make_unique<VariableSymbol>(std::move(UPType));
+    S->insert(Params->ListOfParams[i]->Name, std::move(UPVar));
+    if(i == Params->ListOfParams.size() - 1)
+      delete Params->ListOfParams[i]->T;
   }
-  /*
-  std::unique_ptr<VariableSymbol> V = std::make_unique<VariableSymbol>();
-  std::unique_ptr<ProcedureSymbol> Q = std::make_unique<ProcedureSymbol>();
-  S.insert("a", std::move(V));
-  S.insert("b", std::move(P));
-  S.initializeScope();
-  */
+  delete Params;
 }
-
-/*
-void HandlePrototype(const std::string Name, ReturnType Type) {
-  std::unique_ptr<FunctionSymbol> P = std::make_unique<FunctionSymbol>();
-  S.insert(Name, std::move(P));
-} */
 
 Parameter* HandleParameter(const std::string &Name, bool Array) {
   Parameter *Param = new Parameter();
@@ -97,7 +92,7 @@ void HandleParameters(Parameters* Params, Parameter* Param) {
   Params->ListOfParams.push_back(std::move(UPParam));
 }
 
-grc::Type* HandleType(Types T, int Size) {
+Type* HandleType(Types T, int Size) {
   return new Type(T, Size);
 }
 
@@ -107,7 +102,7 @@ Parameters* HandleListOfParams() {
 
 void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, Type *T) {
   for(int i = 0; i < ParamsOld->ListOfParams.size(); i++) {
-    ParamsOld->ListOfParams[i]->PrimitiveType = T;
+    ParamsOld->ListOfParams[i]->T = T;
   }
   while(ParamsOld->ListOfParams.size() > 0) {
     int N = ParamsOld->ListOfParams.size() - 1;
@@ -115,3 +110,10 @@ void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, Type *T) {
     ParamsOld->ListOfParams.pop_back();
   }
 }
+
+/*
+void HandlePrototype(const std::string Name, ReturnType Type) {
+  std::unique_ptr<FunctionSymbol> P = std::make_unique<FunctionSymbol>();
+  S.insert(Name, std::move(P));
+} */
+

@@ -2,7 +2,6 @@
 
 using namespace grc;
 
-
 void Scope::finalizeScope() {
   SymbolTables.pop_back();
 }
@@ -18,9 +17,9 @@ bool Scope::insert(const std::string &Name, std::unique_ptr<Symbol> Symbol) {
   return false;
 }
 
-void Scope::toPrint() {
+void Scope::toPrint(std::ofstream &File) {
   for(int i = 0; i < SymbolTables.size(); i++) {
-    std::cout << "Scope " << i << "\n";
-    SymbolTables[i]->toPrint();
+    File << "  -> Scope " << i << "\n";
+    SymbolTables[i]->toPrint(File);
   }
 }

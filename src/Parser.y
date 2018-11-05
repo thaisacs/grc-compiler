@@ -21,7 +21,7 @@
   extern int yylex();
   extern llvm::LLVMContext TheContext;
   extern std::unique_ptr<llvm::Module> TheModule;
-  extern grc::Scope S;  
+  extern std::shared_ptr<grc::Scope> S;
 
   void yyerror(const char *s);
 %}
@@ -87,7 +87,7 @@ type: TYPE_INT                   { $$ = HandleType(grc::INT, 0);     }
     | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::STRING, $3); }
     ;
 
-decSub: prototype block {
+decSub: prototype block { S->finalizeScope();
               //$5->toPrint();
               //auto proto = llvm::make_unique<grc::PrototypeAST>("fd"); 
               //auto b = llvm::make_unique<>();
@@ -96,7 +96,7 @@ decSub: prototype block {
               //F->print(llvm::errs());
               //fprintf(stderr, "\n");
             }
-       ;
+      ;
 
 listOfParameters: /*empty*/                                { $$ = HandleListOfParams();               }
                 | listOfParameters parameters ':' type     { HandleListOfParams($1, $2, $4); $$ = $1; }

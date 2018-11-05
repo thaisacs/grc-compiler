@@ -9,7 +9,7 @@
 
 struct Parameter {
   std::string Name;
-  grc::Type* PrimitiveType;
+  grc::Type* T;
   bool Array;
   int Size;
 };
@@ -28,11 +28,9 @@ void HandleCmd(grc::BlockAST *block, grc::ExprAST *Expr);
 void HandlePrototype(const std::string Name, Parameters* Param); 
 
 //void HandlePrototype(const std::string Name, grc::ReturnType Type); 
-
 Parameter* HandleParameter(const std::string &Name, bool Array); 
 Parameters* HandleParameters(); 
 void HandleParameters(Parameters* Params, Parameter* Param);
 grc::Type* HandleType(grc::Types T, int Size); 
-
 Parameters* HandleListOfParams();
 void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, grc::Type *T); 

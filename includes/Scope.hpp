@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <fstream>
 
 #include "SymbolTable.hpp"
 
@@ -13,6 +14,6 @@ namespace grc {
     void initializeScope(); 
     bool insert(const std::string &Name, std::unique_ptr<Symbol> Symbol); 
     void finalizeScope();
-    void toPrint();
+    void toPrint(std::ofstream&);
   };
 }
