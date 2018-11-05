@@ -17,11 +17,13 @@
   #include "AST.hpp"
   #include "Util.hpp"
   #include "Scope.hpp"
+  #include "Log.hpp"
 
   extern int yylex();
   extern llvm::LLVMContext TheContext;
   extern std::unique_ptr<llvm::Module> TheModule;
   extern std::shared_ptr<grc::Scope> S;
+  extern std::unique_ptr<grc::Log> LOG;
 
   void yyerror(const char *s);
 %}
@@ -35,6 +37,7 @@
   grc::ExprAST* E;
   grc::BlockAST* B;
   grc::Type* T;
+  grc::PrototypeAST* PT;
   Parameters* PS;
   Parameter* P;
 }
@@ -57,14 +60,15 @@
 %left '*' '%' '/'
 %right NOT
 
-%type <E> exp cmd cmdIf body
+%type <E> exp cmd ifCmd body assignInit assign
 %type <B> cmds block
 %type <P> parameter
 %type <PS> parameters subParameter listOfParameters
 %type <T> type
+%type <PT> prototype
 %%
 
-program: decs 
+program: decs | block
        ;
 
 decs: /*empty*/
@@ -77,7 +81,7 @@ decVar: VAR listOfVarIdent ':' type ';' {}
       ;
 */
 
-prototype: DEF IDENTIFIER '(' listOfParameters ')' { HandlePrototype($2, $4); }
+prototype: DEF IDENTIFIER '(' listOfParameters ')' { $$ = HandlePrototype($2, $4); }
 /*       | DEF IDENTIFIER '(' ')' ':' type { HandlePrototype($2, grc::INT);  } */
          ; 
 
@@ -87,15 +91,13 @@ type: TYPE_INT                   { $$ = HandleType(grc::INT, 0);     }
     | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::STRING, $3); }
     ;
 
-decSub: prototype block { S->finalizeScope();
-              //$5->toPrint();
-              //auto proto = llvm::make_unique<grc::PrototypeAST>("fd"); 
-              //auto b = llvm::make_unique<>();
-              //auto PrcAST = llvm::make_unique<grc::ProcedureAST>(std::move(p));
-              //PrcAST->codegen(TheContext);
-              //F->print(llvm::errs());
-              //fprintf(stderr, "\n");
-            }
+decSub: prototype block { auto Proc = HandleProcedure($1, $2); 
+                          LOG->procedure(Proc);
+                          std::unique_ptr<grc::ProcedureAST> ProcAST(Proc);
+                          auto ProcIR = ProcAST->codegen(TheContext);
+                          ProcIR->print(llvm::errs());
+                          fprintf(stderr, "\n");
+                          /*F->print(llvm::errs());*/ }
       ;
 
 listOfParameters: /*empty*/                                { $$ = HandleListOfParams();               }
@@ -129,33 +131,33 @@ body: block { /*default*/ }
     | cmd   { /*default*/ }
     ;
 
-simpleCmd: cmdIf       { /*default*/ }
-         | cmdWhile    { /*default*/ }
-         | cmdAssign   { /*default*/ }
-   /*    | cmdFor      { /*default }
-         | cmdCallProc { /*default }*/
+simpleCmd: ifCmd       { /*default*/ }
+         | whileCmd    { /*default*/ }
+         | assignCmd   { /*default*/ }
+         | forCmd      { /*default*/ }
+  /*     | cmdCallProc { /*default }*/
          ;
 
-cmdIf: IF '(' exp ')' body %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }
+ifCmd: IF '(' exp ')' body %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }
      | IF '(' exp ')' body ELSE body      { $$ = HandleCmdIf($3, $5, $7); }
      ;
 
-cmdWhile: WHILE '(' exp ')' body {}
+whileCmd: WHILE '(' exp ')' body {  }
         ;
-/*
-stmtFor: FOR '(' atrib_init ';' exp ';' atrib ')' {}
+
+forCmd: FOR '(' assignInit ';' exp ';' assign ')' {}
        ;
-*/
-cmdAssign: assign ';'     {}
-         | assignInit ';' {}
+
+assignCmd: assign ';'     { /*default*/ }
+         | assignInit ';' { /*default*/ }
          ;
         
-assign: IDENTIFIER ASSIGN exp {}
-      | IDENTIFIER ASSIGN_STEP {}
-      | ASSIGN_STEP IDENTIFIER {}
+assign: IDENTIFIER ASSIGN exp  { $$ = HandleAssign($1, $2, $3); }
+      | IDENTIFIER ASSIGN_STEP { $$ = HandleAssign($2, $1);     }
+      | ASSIGN_STEP IDENTIFIER { $$ = HandleAssign($1, $2);     }
       ;
 
-assignInit: IDENTIFIER ASSIGN_INIT exp { /*$$ = HandleExpression("=", nullptr, $3);*/ }
+assignInit: IDENTIFIER ASSIGN_INIT exp { $$ = HandleAssign("=", $1, $3); }
           ;
 /*
 stmtCallProc: callProc ';' {}
@@ -230,4 +232,3 @@ void yyerror(const char *s) {
   printf("\nerror: %s\n", s);
   exit(1);
 }
-

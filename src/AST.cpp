@@ -2,63 +2,122 @@
 
 using namespace grc;
 
-/***********
- * others  *
- ***********/
-void BlockAST::addExprAST(std::unique_ptr<ExprAST> e) {
-  exps.push_back(std::move(e));
-}
-/***********
- *   log   *
- ***********/
-void NumberExprAST::toPrint() {
-  std::cout << Val << ' ';
+//===----------------------------------------------------------------------===//
+//// NumberExprAST 
+////===----------------------------------------------------------------------===//
+
+void NumberExprAST::toPrint(std::ofstream &File, Traversals T) {
+  File << Val;
 };
 
-void BooleanExprAST::toPrint() {
+llvm::Value* NumberExprAST::codegen(llvm::LLVMContext &TheContext) {
+  return llvm::ConstantInt::get(TheContext, llvm::APInt(32, Val));
+}
+
+//===----------------------------------------------------------------------===//
+//// BooleanExprAST 
+////===----------------------------------------------------------------------===//
+
+void BooleanExprAST::toPrint(std::ofstream &File, Traversals T) {
   if(Bool)
-    std::cout << "True ";
+    File << "True";
   else
-    std::cout << "False ";
+    File << "False";
 }
 
-void VariableExprAST::toPrint() {
-  std::cout << Name << ' ';
+//===----------------------------------------------------------------------===//
+//// VariableExprAST 
+////===----------------------------------------------------------------------===//
+
+void VariableExprAST::toPrint(std::ofstream &File, Traversals T) {
+  File << Name;
 }
 
-void UnaryExprAST::toPrint() {
-  std::cout << Op << ' '; 
-  Operand->toPrint();
+//===----------------------------------------------------------------------===//
+//// UnaryExprAST 
+////===----------------------------------------------------------------------===//
+
+void UnaryExprAST::toPrint(std::ofstream &File, Traversals T) {
+  File << Op; 
+  Operand->toPrint(File, T);
 }
 
-void BinaryExprAST::toPrint() {
-  LHS->toPrint();
-  std::cout << Op << ' ';
-  RHS->toPrint();
+//===----------------------------------------------------------------------===//
+//// BinaryExprAST 
+////===----------------------------------------------------------------------===//
+
+void BinaryExprAST::toPrint(std::ofstream &File, Traversals T) {
+  LHS->toPrint(File, T);
+  File << Op;
+  RHS->toPrint(File, T);
 }
 
-void IfExprAST::toPrint() {
-  std::cout << "\nIf (";
-  Cond->toPrint();
-  std::cout << ")";
-  Then->toPrint();
-  std::cout << "\n";
-}
+//===----------------------------------------------------------------------===//
+//// IfExprAST
+////===----------------------------------------------------------------------===//
 
-void BlockAST::toPrint() {
-  std::cout << "\nBlock\n";
-  for(int i = 0; i < exps.size(); i++) {
-    exps[i]->toPrint();
-    std::cout << "\n";
+void IfExprAST::toPrint(std::ofstream &File, Traversals T) {
+  File << " if ";
+  Cond->toPrint(File, T);
+  File << " then ";
+  Then->toPrint(File, T);
+  if(Else != nullptr) {
+    File << " else ";
+    Else->toPrint(File, T);
   }
-  std::cout << "End Block\n";
 }
-/***********
- * codegen *
- ***********/
+
+//===----------------------------------------------------------------------===//
+//// AssignAST
+////===----------------------------------------------------------------------===//
+
+void AssignAST::toPrint(std::ofstream &File, Traversals T) {
+  File  << Op;
+  Expr->toPrint(File, T);
+}
+
+//===----------------------------------------------------------------------===//
+//// BlockAST
+////===----------------------------------------------------------------------===//
+
+void BlockAST::toPrint(std::ofstream &File, Traversals T) {
+  File << "Block (";
+  for(int i = 0; i < Exps.size(); i++) {
+    Exps[i]->toPrint(File, T);
+  }
+  File << ")";
+}
+
+void BlockAST::addExprAST(std::unique_ptr<ExprAST> Exp) {
+  Exps.push_back(std::move(Exp));
+}
+
+//===----------------------------------------------------------------------===//
+//// PrototypeAST
+////===----------------------------------------------------------------------===//
+
+void PrototypeAST::toPrint(std::ofstream &File) {
+  File << "\t- Name: " << Name;
+}
+
+//===----------------------------------------------------------------------===//
+//// ProcedureAST
+////===----------------------------------------------------------------------===//
+
+void ProcedureAST::toPrint(std::ofstream &File, Traversals T) {
+  File << "\t\t\t-------\n";
+  File << "  -> ProcedureAST\n";
+  //Proto->toPrint(File);
+  //File << std::endl << "\t- ";
+  //Block->toPrint(File, T); 
+  //File << std::endl;
+  File << "\t\t\t-------\n";
+}
+
 llvm::Value* ProcedureAST::codegen(llvm::LLVMContext &TheContext) {
-  int e = 5;
-  return llvm::ConstantInt::get(TheContext, llvm::APInt(32, e));
+  std::string arg = "teste";
+  
+  return &arg;
 }
 
 //llvm::GlobalVariable* DecVarAST::codegen(llvm::LLVMContext &TheContext) {

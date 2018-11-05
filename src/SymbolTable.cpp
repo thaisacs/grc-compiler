@@ -7,7 +7,17 @@ using namespace grc;
 //===----------------------------------------------------------------------===//
 
 void VariableSymbol::toPrint(std::ofstream &File) {
-  File << "Variable";
+  File << "Variable (Type: ";
+  T->toPrint(File);
+  if(T->getPrimitiveType() == PrimitiveType::INT) {
+    File << ", isArray: ";
+    if(isArray)
+      File << "True)";
+    else
+      File << "False)";
+  }else {
+    File << ")";
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -31,23 +41,50 @@ void FunctionSymbol::toPrint(std::ofstream &File) {
 //===----------------------------------------------------------------------===//
 
 Type* Type::copy() {
-  return new Type(PrimitiveType, Size);
+  return new Type(PT, Size);
+}
+
+void Type::toPrint(std::ofstream &File) {
+  switch(PT) {
+    case 0:
+      File << "INT";
+      break;
+    case 1:
+      File << "BOOL";
+      break;
+    case 2:
+      if(Size > 0)
+        File << "STRING[" << Size << "]";
+      else
+        File << "STRING";
+      break;
+  }
 }
 
 //===----------------------------------------------------------------------===//
 //// Symbol Table
 //===----------------------------------------------------------------------===//
 
-bool SymbolTable::insert(const std::string &Name, std::unique_ptr<Symbol> Symbol) {
+bool SymbolTable::insert(const std::string &Name, std::shared_ptr<Symbol> Symbol) {
   if(!Table[Name]) {
-    Table[Name] = std::move(Symbol);  
+    Table[Name] = Symbol;  
     return true;
   }
   return false;
 }
 
+std::shared_ptr<Symbol> SymbolTable::findVariableSymbol(const std::string &Name) {
+  std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
+  for(it = Table.begin(); it != Table.end(); ++it) {
+    if(it->first == Name) {
+      return it->second;
+    }
+  }
+  return nullptr;
+}
+
 void SymbolTable::toPrint(std::ofstream &File) {
-  std::map<std::string,std::unique_ptr<Symbol>>::iterator it;
+  std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
   for (it = Table.begin(); it != Table.end(); ++it) {
         File << "\t" << it->first << " => "; 
         it->second->toPrint(File);

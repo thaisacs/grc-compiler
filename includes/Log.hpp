@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "Scope.hpp"
+#include "AST.hpp"
 
 namespace grc {
   class Log {
@@ -19,5 +20,6 @@ namespace grc {
       File.close();
     }
     void scopes(std::shared_ptr<Scope>); 
+    void procedure(ProcedureAST*);
   };
 }

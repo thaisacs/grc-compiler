@@ -9,29 +9,17 @@
 
 namespace grc {
   enum SymbolType {VARIABLE, PROCEDURE, FUNCTION};
-  enum Types {INT, BOOL, STRING};
+  enum PrimitiveType {INT, BOOL, STRING};
 
   class Type {
-    Types PrimitiveType;
+    PrimitiveType PT;
     int Size;
     public:
-      Type(Types PT, int Size) : PrimitiveType(PT), Size(Size) {}
+      Type(PrimitiveType PT, int Size) : PT(PT), Size(Size) {}
       Type* copy();
-      /*
-      void toPrint() {
-        switch(PrimitiveType) {
-          case 0:
-            std::cout << "INT ";
-            break;
-          case 1:
-            std::cout << "BOOL ";
-            break;
-          case 2:
-            std::cout << "STRING ";
-            break;
-        }
-        std::cout << Size << std::endl;
-      }*/
+      PrimitiveType getPrimitiveType() { return PT; }
+      int getSize() { return Size; }
+      void toPrint(std::ofstream&);
   };
 
   class Symbol {
@@ -43,9 +31,9 @@ namespace grc {
  
   class VariableSymbol : public Symbol {
     std::unique_ptr<Type> T;
-    //bool isArray;
+    bool isArray;
   public:
-    VariableSymbol(std::unique_ptr<Type> T) : T(std::move(T)) {}
+    VariableSymbol(std::unique_ptr<Type> T, bool isArray) : T(std::move(T)), isArray(isArray) {}
     SymbolType getType() override { return VARIABLE; }
     void toPrint(std::ofstream&) override;
   };
@@ -65,10 +53,11 @@ namespace grc {
   }; 
 
   class SymbolTable {
-    std::map<std::string, std::unique_ptr<Symbol>> Table; 
+    std::map<std::string, std::shared_ptr<Symbol>> Table; 
   public:    
     SymbolTable() {}
-    bool insert(const std::string &Name, std::unique_ptr<Symbol> Symbol);
+    bool insert(const std::string&, std::shared_ptr<Symbol>);
     void toPrint(std::ofstream&);
+    std::shared_ptr<Symbol> findVariableSymbol(const std::string&);
   };
 }

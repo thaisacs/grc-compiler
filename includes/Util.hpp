@@ -2,6 +2,7 @@
 
 #include "AST.hpp"
 #include "Scope.hpp"
+#include "Log.hpp"
 #include "SymbolTable.hpp"
 
 #include <iostream>
@@ -10,7 +11,7 @@
 struct Parameter {
   std::string Name;
   grc::Type* T;
-  bool Array;
+  bool isArray;
   int Size;
 };
 
@@ -18,19 +19,21 @@ struct Parameters{
   std::vector<std::unique_ptr<Parameter>> ListOfParams;
 };
 
-grc::ExprAST* HandleExpression(const std::string &Op, grc::ExprAST* ExprA, grc::ExprAST* ExprB);
-grc::ExprAST* HandleExpression(const std::string &Op, grc::ExprAST *Operand);
-grc::ExprAST* HandleExpression(uint8_t Op, grc::ExprAST* ExprA, grc::ExprAST* ExprB);
-grc::ExprAST* HandleCmdIf(grc::ExprAST* Cond, grc::ExprAST* Then, grc::ExprAST* Else); 
-grc::ExprAST* HandleCmdIf(grc::ExprAST* Cond, grc::ExprAST* Then); 
+grc::ExprAST* HandleExpression(const std::string&, grc::ExprAST*, grc::ExprAST*);
+grc::ExprAST* HandleExpression(const std::string&, grc::ExprAST*);
+grc::ExprAST* HandleExpression(uint8_t, grc::ExprAST*, grc::ExprAST*);
+grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*, grc::ExprAST*); 
+grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*); 
 grc::BlockAST* HandleCmd();
-void HandleCmd(grc::BlockAST *block, grc::ExprAST *Expr); 
-void HandlePrototype(const std::string Name, Parameters* Param); 
-
-//void HandlePrototype(const std::string Name, grc::ReturnType Type); 
-Parameter* HandleParameter(const std::string &Name, bool Array); 
+void HandleCmd(grc::BlockAST*, grc::ExprAST*); 
+grc::PrototypeAST* HandlePrototype(const std::string, Parameters*); 
+Parameter* HandleParameter(const std::string&, bool); 
 Parameters* HandleParameters(); 
-void HandleParameters(Parameters* Params, Parameter* Param);
-grc::Type* HandleType(grc::Types T, int Size); 
+void HandleParameters(Parameters*, Parameter*);
+grc::Type* HandleType(grc::PrimitiveType, int); 
 Parameters* HandleListOfParams();
-void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, grc::Type *T); 
+void HandleListOfParams(Parameters*, Parameters*, grc::Type*); 
+grc::ProcedureAST* HandleProcedure(grc::PrototypeAST*, grc::BlockAST*); 
+grc::AssignAST* HandleAssign(const std::string, const std::string, grc::ExprAST*); 
+grc::AssignAST* HandleAssign(const std::string, uint8_t, grc::ExprAST*); 
+grc::AssignAST* HandleAssign(uint8_t, const std::string); 

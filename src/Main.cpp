@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
   yyin = i;
   yyparse();
   
-  //TheModule->print(llvm::errs(), nullptr);
+  TheModule->print(llvm::errs(), nullptr);
+  
   LOG->scopes(S);
   S->finalizeScope();
   

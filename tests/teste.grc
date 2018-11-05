@@ -1,6 +1,3 @@
-def bubblesort(a,b: int; name: string) {
-  if(a > b)
-    a = 5;
+def teste(a, b: int){
+  a = a + b;
 }
-
-def main(work, d: bool) {}
