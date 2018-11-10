@@ -6,6 +6,7 @@
 
 #include "Scope.hpp"
 #include "AST.hpp"
+#include "Util.hpp"
 
 namespace grc {
   class Log {

@@ -10,6 +10,7 @@ void Log::scopes(std::shared_ptr<Scope> S) {
 
 void Log::procedure(ProcedureAST* Proc) {
   File.open(FileName, std::ofstream::app);
-  Proc->toPrint(File, Traversals::InOrder);
+  Proc->toPrint(File);
   File.close();
 }
+

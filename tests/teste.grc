@@ -1,3 +1,3 @@
-def teste(a, b: int){
-  a = a + b;
+def sum() {
+  var b = 5, a : int;  
 }

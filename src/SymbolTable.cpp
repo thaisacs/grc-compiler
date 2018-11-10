@@ -83,11 +83,25 @@ std::shared_ptr<Symbol> SymbolTable::findVariableSymbol(const std::string &Name)
   return nullptr;
 }
 
+void SymbolTable::setVariableValue(const std::string Name, llvm::Value* V) {
+  std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
+  for(it = Table.begin(); it != Table.end(); ++it) {
+    if(it->first == Name) {
+      it->second->setValue(V);
+    }
+  } 
+}
+
 void SymbolTable::toPrint(std::ofstream &File) {
   std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
   for (it = Table.begin(); it != Table.end(); ++it) {
-        File << "\t" << it->first << " => "; 
-        it->second->toPrint(File);
-        File << '\n';
+    File << "\t" << it->first << " => "; 
+    it->second->toPrint(File);
+    File << '\n';
   }
+}
+
+llvm::Value* SymbolTable::getVariableValue(const std::string &Name) {
+  std::shared_ptr<Symbol> S = findVariableSymbol(Name);
+  return S->getValue();
 }

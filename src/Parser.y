@@ -40,6 +40,8 @@
   grc::PrototypeAST* PT;
   Parameters* PS;
   Parameter* P;
+  grc::VarExprAST* VE;
+  grc::Variable* V;
 }
 
 %nonassoc END_ELSE 
@@ -60,27 +62,28 @@
 %left '*' '%' '/'
 %right NOT
 
-%type <E> exp cmd ifCmd body assignInit assign
+%type <E> exp cmd ifCmd whileCmd body assignInit assign
 %type <B> cmds block
 %type <P> parameter
 %type <PS> parameters subParameter listOfParameters
 %type <T> type
 %type <PT> prototype
+%type <VE> listOfVarIdent varCmd
+%type <V> var simpleVar simpleInitVar 
+
 %%
 
-program: decs | block
+program: decs
        ;
 
 decs: /*empty*/
-/*  | decs decVar { } */
-    | decs decSub { }
+/*  | decs decVar { /*default } */
+    | decs decSub { /*default*/ }
     ;
-
 /*
-decVar: VAR listOfVarIdent ':' type ';' {}
+decVar: VAR listOfVarIdent ':' type ';' { HandleListOfVar($2, $4); }
       ;
 */
-
 prototype: DEF IDENTIFIER '(' listOfParameters ')' { $$ = HandlePrototype($2, $4); }
 /*       | DEF IDENTIFIER '(' ')' ':' type { HandlePrototype($2, grc::INT);  } */
          ; 
@@ -93,10 +96,11 @@ type: TYPE_INT                   { $$ = HandleType(grc::INT, 0);     }
 
 decSub: prototype block { auto Proc = HandleProcedure($1, $2); 
                           LOG->procedure(Proc);
-                          std::unique_ptr<grc::ProcedureAST> ProcAST(Proc);
-                          auto ProcIR = ProcAST->codegen(TheContext);
-                          ProcIR->print(llvm::errs());
-                          fprintf(stderr, "\n");
+                          //std::unique_ptr<grc::ProcedureAST> ProcAST(Proc);
+                          //auto ProcIR = ProcAST->codegen();
+                          S->finalizeScope();
+                          //ProcIR->print(llvm::errs());
+                          //fprintf(stderr, "\n");
                           /*F->print(llvm::errs());*/ }
       ;
 
@@ -135,6 +139,7 @@ simpleCmd: ifCmd       { /*default*/ }
          | whileCmd    { /*default*/ }
          | assignCmd   { /*default*/ }
          | forCmd      { /*default*/ }
+         | varCmd      { /*default*/ }
   /*     | cmdCallProc { /*default }*/
          ;
 
@@ -142,11 +147,14 @@ ifCmd: IF '(' exp ')' body %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }
      | IF '(' exp ')' body ELSE body      { $$ = HandleCmdIf($3, $5, $7); }
      ;
 
-whileCmd: WHILE '(' exp ')' body {  }
+whileCmd: WHILE '(' exp ')' body { $$ = HandleCmdWhile($3, $5); }
         ;
 
 forCmd: FOR '(' assignInit ';' exp ';' assign ')' {}
        ;
+
+varCmd: VAR listOfVarIdent ':' type ';' { HandleVarCmd($2, $4); $$ = $2; }
+      ;
 
 assignCmd: assign ';'     { /*default*/ }
          | assignInit ';' { /*default*/ }
@@ -171,43 +179,40 @@ lists: /*empty
 
 list: exp {}
     | list ',' exp {};
+
 /*
- *list of varible identifier
- 
-listOfVarIdent: var subListOfVarIdent {}
-              | ',' var subListOfVarIdent {}
+ *list of identifier variable
+ */ 
+listOfVarIdent: /*empty*/              { $$ = HandleListOfVar();           }
+              | listOfVarIdent var     { HandleListOfVar($1, $2); $$ = $1; }
+              | listOfVarIdent ',' var { HandleListOfVar($1, $3); $$ = $1; }
               ;
 
-subListOfVarIdent: /*empty
-                 | listOfVarIdent {}
-
-var: SimpleVar {}
-   | SimpleInitVar {}
-   | ArrayVar {}
+var: simpleVar     { /*default*/ }
+   | simpleInitVar { /*default*/ } 
+   | ArrayVar      { /*default*/ }
    ;
 
-SimpleVar: IDENTIFIER {}
+simpleVar: IDENTIFIER { $$ = HandleVar($1); }
          ;
 
-SimpleInitVar: atrib_init {}
+simpleInitVar: IDENTIFIER ASSIGN_INIT exp { $$ = HandleVar($1, $3); }
              ;
 
 ArrayVar: IDENTIFIER '[' NUMBER ']' ArrayInitVar { }
         ;
 
-ArrayInitVar: /*empty
-            | ATRIBI listOfNumbers { }
+ArrayInitVar: /*empty*/                 { }
+            | ASSIGN_INIT listOfNumbers { }
             ;
 
 listOfNumbers: '{' NUMBER subListOfNumbers '}' {}
              ;
 
-subListOfNumbers: /*empty
+subListOfNumbers: /*empty*/                   {}
                 | ',' NUMBER subListOfNumbers {}
                 ;
-/*
- *expression
-*/
+
 exp: '(' exp ')'   { $$ = $2;                             }
    | exp '+' exp   { $$ = HandleExpression("+", $1, $3);  }
    | exp '*' exp   { $$ = HandleExpression("*", $1, $3);  }
@@ -224,8 +229,8 @@ exp: '(' exp ')'   { $$ = $2;                             }
    | IDENTIFIER    { $$ = new grc::VariableExprAST($1);   }
    | TRUE          { $$ = new grc::BooleanExprAST(true);  }
    | FALSE         { $$ = new grc::BooleanExprAST(false); }
-/* | callProc    {}*/
-   ;
+/* | callProc    {}
+   ;*/
 %%
 
 void yyerror(const char *s) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "llvm/IR/Value.h"
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -27,15 +29,21 @@ namespace grc {
     virtual ~Symbol() = default;
     virtual SymbolType getType() = 0;
     virtual void toPrint(std::ofstream&) = 0;
+    virtual void setValue(llvm::Value*) {};
+    virtual llvm::Value* getValue() {};
   };
  
   class VariableSymbol : public Symbol {
     std::unique_ptr<Type> T;
     bool isArray;
+    llvm::Value* V;
   public:
-    VariableSymbol(std::unique_ptr<Type> T, bool isArray) : T(std::move(T)), isArray(isArray) {}
+    VariableSymbol(std::unique_ptr<Type> T, bool isArray) : 
+      T(std::move(T)), isArray(isArray), V(nullptr) {}
     SymbolType getType() override { return VARIABLE; }
     void toPrint(std::ofstream&) override;
+    llvm::Value* getValue() { return V; }
+    void setValue(llvm::Value* VarValue) { V = VarValue;  }
   };
 
   class ProcedureSymbol : public Symbol {
@@ -57,7 +65,9 @@ namespace grc {
   public:    
     SymbolTable() {}
     bool insert(const std::string&, std::shared_ptr<Symbol>);
-    void toPrint(std::ofstream&);
     std::shared_ptr<Symbol> findVariableSymbol(const std::string&);
+    void setVariableValue(const std::string, llvm::Value*);
+    llvm::Value* getVariableValue(const std::string&); 
+    void toPrint(std::ofstream&);
   };
 }

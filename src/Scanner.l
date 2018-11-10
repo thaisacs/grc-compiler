@@ -1,4 +1,5 @@
 %option noyywrap nounput
+
 %{
 #include <iostream>
 #include <memory>
@@ -76,7 +77,7 @@ string     "\"".*"\""
                return IDENTIFIER;
              }
 {number}     { yylval.N = atoi(yytext); return NUMBER; }
-{string}     { /*yylval.str = yytext;*/ return WORD;     }
+{string}     { /*yylval.str = yytext;*/ return WORD;   }
 
 {comment}    {             }
 {whitespace} {             }

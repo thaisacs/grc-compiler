@@ -26,6 +26,10 @@ std::shared_ptr<Symbol> Scope::findVariableSymbol(const std::string &Name) {
   return nullptr;
 }
 
+void Scope::setVariableValue(const std::string &Name, llvm::Value* V) {
+  SymbolTables[SymbolTables.size()-1]->setVariableValue(Name, V);
+}
+
 void Scope::toPrint(std::ofstream &File) {
   File << "\t\t\t*******\n";
   for(int i = 0; i < SymbolTables.size(); i++) {
@@ -33,4 +37,13 @@ void Scope::toPrint(std::ofstream &File) {
     SymbolTables[i]->toPrint(File);
   }
   File << "\t\t\t*******\n";
+}
+
+llvm::Value* Scope::getVariableValue(const std::string &Name) {
+  for(int i = SymbolTables.size() - 1; i >= 0; i--) {
+    std::shared_ptr<Symbol> S = findVariableSymbol(Name);
+    if(S != nullptr)
+      return S->getValue();
+  }
+  return nullptr;
 }

@@ -1,5 +1,6 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
 
 #include <iostream>
 #include <memory>
@@ -13,7 +14,6 @@ extern FILE *yyin;
 llvm::LLVMContext TheContext;
 std::unique_ptr<llvm::Module> TheModule;
 
-//grc::Scope S;
 std::shared_ptr<grc::Scope> S = std::make_shared<grc::Scope>();
 std::unique_ptr<grc::Log> LOG = std::make_unique<grc::Log>("GRCLog.out");
 
@@ -33,6 +33,7 @@ int main(int argc, char *argv[]) {
   TheModule->print(llvm::errs(), nullptr);
   
   LOG->scopes(S);
+  
   S->finalizeScope();
   
   return 0;

@@ -59,7 +59,14 @@ void HandleCmd(BlockAST *Block, ExprAST *Expr) {
   Block->addExprAST(std::move(UPExpr));
 }
 
+ExprAST* HandleCmdWhile(ExprAST* Cond, ExprAST* Block) {
+  std::unique_ptr<ExprAST> UPCond(Cond);
+  std::unique_ptr<ExprAST> UPBlock(Block);
+  return new WhileExprAST(std::move(UPCond), std::move(UPBlock));
+}
+
 PrototypeAST* HandlePrototype(const std::string Name, Parameters* Params) {
+  std::vector<std::string> Args;
   //insert procedure in symbol table
   std::unique_ptr<ProcedureSymbol> UPProc = std::make_unique<ProcedureSymbol>();
   S->insert(Name, std::move(UPProc));
@@ -73,6 +80,7 @@ PrototypeAST* HandlePrototype(const std::string Name, Parameters* Params) {
     std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(std::move(UPType), 
         Params->ListOfParams[i]->isArray);
     S->insert(Params->ListOfParams[i]->Name, std::move(SPVar));
+    Args.push_back(Params->ListOfParams[i]->Name);
     //memory free
     if(i == Params->ListOfParams.size() - 1)
       delete Params->ListOfParams[i]->T;
@@ -81,7 +89,7 @@ PrototypeAST* HandlePrototype(const std::string Name, Parameters* Params) {
   //refresh log
   LOG->scopes(S);
   //create prototypeAST node
-  return new PrototypeAST(Name); 
+  return new PrototypeAST(Name, Args); 
 }
 
 Parameter* HandleParameter(const std::string &Name, bool isArray) {
@@ -120,9 +128,32 @@ void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, Type *T) {
   }
 }
 
+VarExprAST* HandleListOfVar() {
+  return new VarExprAST();
+}
+
+Variable* HandleVar(const std::string &Name) {
+  return new Variable(Name, nullptr, false);
+}
+
+Variable* HandleVar(const std::string &Name, ExprAST* Expr) {
+  std::unique_ptr<ExprAST> UPExpr(Expr);
+  return new Variable(Name, std::move(UPExpr), false);
+}
+
+void HandleListOfVar(VarExprAST *Vars, Variable* Var) {
+  std::unique_ptr<Variable> UPVar(Var);
+  Vars->addVar(std::move(UPVar));
+}
+
+void HandleVarCmd(VarExprAST* Vars, Type* T) {
+  std::unique_ptr<Type> UPT(T);
+  Vars->setType(std::move(UPT));
+}
+
 ProcedureAST* HandleProcedure(PrototypeAST* Proto, BlockAST* Block) {
   //finalize current scope
-  S->finalizeScope();
+  //S->finalizeScope();
   //create and return ProcedureAST node
   std::unique_ptr<PrototypeAST> UPProto(Proto);
   std::unique_ptr<BlockAST> UPBlock(Block);
@@ -159,7 +190,7 @@ AssignAST* HandleAssign(uint8_t Op, const std::string Name) {
   ExprAST* Expr = new NumberExprAST(1);
   if(Op == 1) { //++ -> += 1
     return HandleAssign(Name, 1, Expr);
-  }else {          //-- -> -= 1
+  }else {       //-- -> -= 1
     return HandleAssign(Name, 2, Expr);
   }
 }

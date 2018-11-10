@@ -12,36 +12,48 @@
 #include <vector>
 #include <memory>
 #include <fstream>
+#include <tuple>
+
 
 namespace grc {
-  enum Traversals {InOrder, PosOrder, PreOrder};
-  
   class ExprAST {
   public:
     virtual ~ExprAST() = default;
-    virtual void toPrint(std::ofstream&, Traversals) = 0; 
+    virtual llvm::Value* codegen() = 0;
+    virtual void toPrint(std::ofstream&) = 0; 
   };
   
   class NumberExprAST : public ExprAST {
     int Val;
   public:
     NumberExprAST(int Val) : Val(Val) {}
-    void toPrint(std::ofstream&, Traversals) override; 
-    llvm::Value* codegen(llvm::LLVMContext&);
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override; 
   };
 
   class BooleanExprAST: public ExprAST {
     bool Bool;
   public:
     BooleanExprAST(bool Bool) : Bool(Bool) {}
-    void toPrint(std::ofstream&, Traversals) override;
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
   };
 
   class VariableExprAST: public ExprAST {
     std::string Name;
   public:
     VariableExprAST(const std::string &Name) : Name(Name) {}
-    void toPrint(std::ofstream&, Traversals) override;
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+
+  class CallExprAST : public ExprAST {
+    std::string Callee;
+    std::vector<std::unique_ptr<ExprAST>> Args;
+  public:
+    CallExprAST(const std::string &Callee, 
+        std::vector<std::unique_ptr<ExprAST>> Args) : 
+      Callee(Callee), Args(std::move(Args)) {}
   };
 
   class UnaryExprAST: public ExprAST {
@@ -50,7 +62,8 @@ namespace grc {
   public:
     UnaryExprAST(const std::string &Op, std::unique_ptr<ExprAST> Operand) : 
       Op(Op), Operand(std::move(Operand)) {}
-    void toPrint(std::ofstream&, Traversals) override;
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
   };
 
   class BinaryExprAST : public ExprAST {
@@ -59,7 +72,8 @@ namespace grc {
   public:
     BinaryExprAST(const std::string &Op, std::unique_ptr<ExprAST> LHS,
         std::unique_ptr<ExprAST> RHS) : Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
-    void toPrint(std::ofstream&, Traversals) override;
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
   };
 
   class IfExprAST : public ExprAST {
@@ -67,8 +81,20 @@ namespace grc {
   public:
     IfExprAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<ExprAST> Then, 
         std::unique_ptr<ExprAST> Else) : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
-    void toPrint(std::ofstream&, Traversals) override;
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
   };
+
+  class WhileExprAST : public ExprAST {
+    std::unique_ptr<ExprAST> Cond, Block;  
+  public:
+    WhileExprAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<ExprAST> Block) : 
+      Cond(std::move(Cond)), Block(std::move(Block)) {}
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+
+  class ForExprAST : public ExprAST {};
 
   class AssignAST : public ExprAST {
     std::string Op;
@@ -77,25 +103,46 @@ namespace grc {
   public:
     AssignAST(const std::string Op, std::shared_ptr<Symbol> Var, std::unique_ptr<ExprAST> Expr) : 
       Op(Op), Var(Var), Expr(std::move(Expr)) {}
-    void toPrint(std::ofstream&, Traversals) override;
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+
+  class Variable {
+    std::string Name;
+    std::unique_ptr<ExprAST> Expr;
+    bool isArray;
+  public:
+    Variable(const std::string Name, std::unique_ptr<ExprAST> Expr, bool isArray) : 
+      Name(Name), Expr(std::move(Expr)), isArray(isArray) {}
+    void toPrint(std::ofstream&);
+  };
+
+  class VarExprAST : public ExprAST {
+    std::vector<std::unique_ptr<Variable>> Vars;
+    std::unique_ptr<Type> PrimitiveType;
+  public:
+    VarExprAST() {}
+    void addVar(std::unique_ptr<Variable>);
+    void setType(std::unique_ptr<Type>); 
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
   };
 
   class BlockAST : public ExprAST {
     std::vector<std::unique_ptr<ExprAST>> Exps;
   public:
     BlockAST() {}; 
-    //BlockAST(std::vector<std::unique_ptr<ExprAST>> cmds) : 
-    //  cmds(std::move(cmds)) {}; 
-    void addExprAST(std::unique_ptr<ExprAST>);
-    void toPrint(std::ofstream&, Traversals) override; 
+    void addExprAST(std::unique_ptr<ExprAST> Exp);
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override; 
   };
 
   class PrototypeAST {
     std::string Name;
-    //std::vector<std::string> Args;
+    std::vector<std::string> Args;
   public:
-    PrototypeAST(const std::string &name) :
-      Name(name) {}
+    PrototypeAST(const std::string &name, std::vector<std::string> Args) : 
+      Name(name), Args(Args) {}
     const std::string &getName() const { return Name; };
     void toPrint(std::ofstream&);
     llvm::Function* codegen();
@@ -103,11 +150,11 @@ namespace grc {
 
   class ProcedureAST {
     std::unique_ptr<PrototypeAST> Proto;
-    std::unique_ptr<BlockAST> Block; 
+    std::unique_ptr<BlockAST> Body; 
   public:
-    ProcedureAST(std::unique_ptr<PrototypeAST> Proto, std::unique_ptr<BlockAST> Block) : 
-      Proto(std::move(Proto)), Block(std::move(Block)) {}
-    void toPrint(std::ofstream&, Traversals T);
-    llvm::Value* codegen(llvm::LLVMContext&);
+    ProcedureAST(std::unique_ptr<PrototypeAST> Proto, std::unique_ptr<BlockAST> Body) : 
+      Proto(std::move(Proto)), Body(std::move(Body)) {}
+    void toPrint(std::ofstream&);
+    llvm::Function* codegen();
   };
 }
