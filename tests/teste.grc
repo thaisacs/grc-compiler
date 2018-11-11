@@ -1,3 +1,14 @@
-def sum() {
-  var b = 5, a : int;  
+def showName(name: string[50]) {
+  
+}
+
+def sumIsA(vec[] : int, a: int) : bool {
+  
+}
+
+def isYou(b[]: bool) : string[50] {
+  
+}
+
+def main() : int {
 }

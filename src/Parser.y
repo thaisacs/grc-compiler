@@ -41,7 +41,7 @@
   Parameters* PS;
   Parameter* P;
   grc::VarExprAST* VE;
-  grc::Variable* V;
+  grc::Var* V;
 }
 
 %nonassoc END_ELSE 
@@ -80,26 +80,22 @@ decs: /*empty*/
 /*  | decs decVar { /*default } */
     | decs decSub { /*default*/ }
     ;
-/*
-decVar: VAR listOfVarIdent ':' type ';' { HandleListOfVar($2, $4); }
-      ;
-*/
-prototype: DEF IDENTIFIER '(' listOfParameters ')' { $$ = HandlePrototype($2, $4); }
-/*       | DEF IDENTIFIER '(' ')' ':' type { HandlePrototype($2, grc::INT);  } */
+
+prototype: DEF IDENTIFIER '(' listOfParameters ')'          { $$ = HandlePrototype($2, $4);     }
+         | DEF IDENTIFIER '(' listOfParameters ')' ':' type { $$ = HandlePrototype($2, $4, $7 );}
          ; 
 
-type: TYPE_INT                   { $$ = HandleType(grc::INT, 0);     }
-    | TYPE_BOOL                  { $$ = HandleType(grc::BOOL, 0);    }
-    | TYPE_STRING                { $$ = HandleType(grc::STRING, 0);  }
-    | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::STRING, $3); }
+type: TYPE_INT                   { /*$$ = HandleType(grc::BasicType::Int, 0);*/     }
+    | TYPE_BOOL                  { /*$$ = HandleType(grc::BasicType::Bool, 0);*/    }
+    | TYPE_STRING                { /*$$ = HandleType(grc::BasicType::String, 0);*/  }
+    | TYPE_STRING '[' NUMBER ']' { /*$$ = HandleType(grc::BasicType::String, $3);*/ }
     ;
 
 decSub: prototype block { auto Proc = HandleProcedure($1, $2); 
-                          LOG->procedure(Proc);
+                          //LOG->procedure(Proc);
                           //std::unique_ptr<grc::ProcedureAST> ProcAST(Proc);
                           //auto ProcIR = ProcAST->codegen();
-                          S->finalizeScope();
-                          //ProcIR->print(llvm::errs());
+                          //S->finalizeScope();
                           //fprintf(stderr, "\n");
                           /*F->print(llvm::errs());*/ }
       ;
@@ -140,6 +136,8 @@ simpleCmd: ifCmd       { /*default*/ }
          | assignCmd   { /*default*/ }
          | forCmd      { /*default*/ }
          | varCmd      { /*default*/ }
+         | readCmd     { /*default*/ }
+         | writeCmd    { /*default*/ }
   /*     | cmdCallProc { /*default }*/
          ;
 
@@ -167,6 +165,17 @@ assign: IDENTIFIER ASSIGN exp  { $$ = HandleAssign($1, $2, $3); }
 
 assignInit: IDENTIFIER ASSIGN_INIT exp { $$ = HandleAssign("=", $1, $3); }
           ;
+
+readCmd: READ IDENTIFIER ';' {}
+       ;
+
+writeCmd: WRITE contWrite exp ';' {}
+        ;
+
+contWrite: /*empty*/         {}
+         | contWrite exp ',' {}
+         ;
+
 /*
 stmtCallProc: callProc ';' {}
             ;
@@ -190,7 +199,7 @@ listOfVarIdent: /*empty*/              { $$ = HandleListOfVar();           }
 
 var: simpleVar     { /*default*/ }
    | simpleInitVar { /*default*/ } 
-   | ArrayVar      { /*default*/ }
+/* | ArrayVar      { /*default } */
    ;
 
 simpleVar: IDENTIFIER { $$ = HandleVar($1); }
@@ -198,21 +207,21 @@ simpleVar: IDENTIFIER { $$ = HandleVar($1); }
 
 simpleInitVar: IDENTIFIER ASSIGN_INIT exp { $$ = HandleVar($1, $3); }
              ;
-
+/*
 ArrayVar: IDENTIFIER '[' NUMBER ']' ArrayInitVar { }
         ;
 
-ArrayInitVar: /*empty*/                 { }
+ArrayInitVar: /*empty                 { }
             | ASSIGN_INIT listOfNumbers { }
             ;
 
 listOfNumbers: '{' NUMBER subListOfNumbers '}' {}
              ;
 
-subListOfNumbers: /*empty*/                   {}
+subListOfNumbers: /*empty                   {}
                 | ',' NUMBER subListOfNumbers {}
                 ;
-
+*/
 exp: '(' exp ')'   { $$ = $2;                             }
    | exp '+' exp   { $$ = HandleExpression("+", $1, $3);  }
    | exp '*' exp   { $$ = HandleExpression("*", $1, $3);  }

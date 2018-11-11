@@ -27,6 +27,8 @@ add_executable(
     ${BISON_MyParser_OUTPUTS}
     ${FLEX_MyScanner_OUTPUTS})
 
-llvm_map_components_to_libnames(llvm_libs support core irreader)
+#llvm_map_components_to_libnames(llvm_libs bitreader core support)
 
-target_link_libraries(grcc ${llvm_libs})
+link_directories(/usr/lib/llvm-7/lib)
+
+target_link_libraries(grcc PUBLIC "LLVM-7")

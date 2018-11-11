@@ -25,7 +25,7 @@ llvm::IRBuilder<> Builder(TheContext);
 ////===----------------------------------------------------------------------===//
 
 void NumberExprAST::toPrint(std::ofstream &File) {
-  File << Val;
+  //File << Val;
 };
 
 llvm::Value* NumberExprAST::codegen() {
@@ -33,14 +33,31 @@ llvm::Value* NumberExprAST::codegen() {
 }
 
 //===------------------------------------------------------------------------===//
+//// NumberExprAST 
+////===----------------------------------------------------------------------===//
+
+//void NumbersExprAST::addNumber(int Number) {
+
+//}
+
+//void NumbersExprAST::toPrint(std::ofstream &File) {
+//  File << Val;
+//};
+
+//llvm::Value* NumbersExprAST::codegen() {
+//  return nullptr;
+//  return llvm::ConstantInt::get(TheContext, llvm::APInt(32, Val));
+//}
+
+//===------------------------------------------------------------------------===//
 //// BooleanExprAST 
 ////===----------------------------------------------------------------------===//
 
 void BooleanExprAST::toPrint(std::ofstream &File) {
-  if(Bool)
-    File << "True";
-  else
-    File << "False";
+  //if(Bool)
+  //  File << "True";
+  //else
+  //  File << "False";
 }
 
 llvm::Value* BooleanExprAST::codegen() {}
@@ -50,11 +67,12 @@ llvm::Value* BooleanExprAST::codegen() {}
 ////===----------------------------------------------------------------------===//
 
 void VariableExprAST::toPrint(std::ofstream &File) {
-  File << Name;
+  //File << Name;
 }
 
 llvm::Value* VariableExprAST::codegen() {
-  return S->getVariableValue(Name);
+  return nullptr;
+  //return S->getVariableValue(Name);
 }
 
 //===------------------------------------------------------------------------===//
@@ -62,20 +80,22 @@ llvm::Value* VariableExprAST::codegen() {
 ////===----------------------------------------------------------------------===//
 
 void UnaryExprAST::toPrint(std::ofstream &File) {
-  File << Op; 
-  Operand->toPrint(File);
+  //File << Op; 
+  //Operand->toPrint(File);
 }
 
-llvm::Value* UnaryExprAST::codegen() {}
+llvm::Value* UnaryExprAST::codegen() {
+  return nullptr;
+}
 
 //===------------------------------------------------------------------------===//
 //// BinaryExprAST 
 ////===----------------------------------------------------------------------===//
 
 void BinaryExprAST::toPrint(std::ofstream &File) {
-  LHS->toPrint(File);
-  File << Op;
-  RHS->toPrint(File);
+  //LHS->toPrint(File);
+  //File << Op;
+  //RHS->toPrint(File);
 }
 
 llvm::Value* BinaryExprAST::codegen() {
@@ -99,14 +119,14 @@ llvm::Value* BinaryExprAST::codegen() {
 ////===----------------------------------------------------------------------===//
 
 void IfExprAST::toPrint(std::ofstream &File) {
-  File << " if ";
-  Cond->toPrint(File);
-  File << " then ";
-  Then->toPrint(File);
-  if(Else != nullptr) {
-    File << " else ";
-    Else->toPrint(File);
-  }
+  //File << " if ";
+  //Cond->toPrint(File);
+  //File << " then ";
+  //Then->toPrint(File);
+  //if(Else != nullptr) {
+  //  File << " else ";
+  //  Else->toPrint(File);
+  //}
 }
 
 llvm::Value* IfExprAST::codegen() {
@@ -118,16 +138,16 @@ llvm::Value* IfExprAST::codegen() {
 ////===----------------------------------------------------------------------===//
 
 void WhileExprAST::toPrint(std::ofstream &File) {
-  File << " while ";
-  if(Cond)
-    Cond->toPrint(File);
-  else
-    std::cout << "null\n";
-  File << " block ";
-  if(Block)
-    Block->toPrint(File);
-  else
-    std::cout << "null\n";
+  //File << " while ";
+  //if(Cond)
+  //  Cond->toPrint(File);
+  //else
+  //  std::cout << "null\n";
+  //File << " block ";
+  //if(Block)
+  //  Block->toPrint(File);
+  //else
+  //  std::cout << "null\n";
 }
 
 llvm::Value* WhileExprAST::codegen() {}
@@ -137,8 +157,8 @@ llvm::Value* WhileExprAST::codegen() {}
 ////===----------------------------------------------------------------------===//
 
 void AssignAST::toPrint(std::ofstream &File) {
-  File  << Op;
-  Expr->toPrint(File);
+  //File  << Op;
+  //Expr->toPrint(File);
 }
 
 llvm::Value* AssignAST::codegen() {
@@ -149,29 +169,19 @@ llvm::Value* AssignAST::codegen() {
 //// VarExprAST
 ////===----------------------------------------------------------------------===//
 
-void Variable::toPrint(std::ofstream &File) {
-  File << Name << " " << isArray << " ";
-  if(Expr)
-    Expr->toPrint(File);
-}
-
-void VarExprAST::addVar(std::unique_ptr<Variable> Var) {
-  Vars.push_back(std::move(Var));
-}
-
-void VarExprAST::setType(std::unique_ptr<Type> PT) {
-  PrimitiveType = std::move(PT);
-}
-
-void VarExprAST::toPrint(std::ofstream &File) {
-  PrimitiveType->toPrint(File);
-  File << " ";
-  for(int i = 0; i < Vars.size(); i++) 
-    Vars[i]->toPrint(File);
+void VarExprAST::addVar(std::unique_ptr<Var> V) {
+  Vars.push_back(std::move(V));
 }
 
 llvm::Value* VarExprAST::codegen() {
   //return Expr->codegen();
+}
+
+void VarExprAST::toPrint(std::ofstream &File) {
+  //PrimitiveType->toPrint(File);
+  //File << " ";
+  //for(int i = 0; i < Vars.size(); i++) 
+  //  Vars[i]->toPrint(File);
 }
 
 //===------------------------------------------------------------------------===//
@@ -183,11 +193,11 @@ void BlockAST::addExprAST(std::unique_ptr<ExprAST> Exp) {
 }
 
 void BlockAST::toPrint(std::ofstream &File) {
-  File << "Block (";
-  for(int i = 0; i < Exps.size(); i++) {
-    Exps[i]->toPrint(File);
-  }
-  File << ")";
+  //File << "Block (";
+  //for(int i = 0; i < Exps.size(); i++) {
+  //  Exps[i]->toPrint(File);
+  //}
+  //File << ")";
 }
 
 llvm::Value* BlockAST::codegen() {
@@ -203,18 +213,23 @@ void PrototypeAST::toPrint(std::ofstream &File) {
 }
 
 llvm::Function* PrototypeAST::codegen() {
-  //std::vector<llvm::Type*> Integers(Args.size(), 
-  //    llvm::Type::getInt32Ty(TheContext));
-  //llvm::FunctionType *FT = llvm::FunctionType::get(
-  //    llvm::Type::getVoidTy(TheContext), Integers, false);
-  //llvm::Function* F = llvm::Function::Create(
-  //    FT, llvm::Function::ExternalLinkage, Name, TheModule.get());
+  //llvm::Type* I = llvm::IntegerType::getInt8Ty(TheContext);
+  //llvm::ArrayType* arrayType = llvm::ArrayType::get(I, 5);
+  std::vector<llvm::Type*> ArgsVector;
+  for(int i = 0; i < Args.size(); i++) {
+      ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
+  }
   
-  //unsigned Idx = 0;
-  //for(auto &Arg : F->args())
-  //  Arg.setName(Args[Idx++]);
+  llvm::FunctionType *FT = llvm::FunctionType::get(
+      llvm::Type::getVoidTy(TheContext), ArgsVector, false);
+  llvm::Function* F = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, Name, TheModule.get());
+  
+  unsigned Idx = 0;
+  for(auto &Arg : F->args())
+    Arg.setName(Args[Idx++]);
 
-  return nullptr;
+  return F;
 }
 
 //===------------------------------------------------------------------------===//
@@ -222,21 +237,21 @@ llvm::Function* PrototypeAST::codegen() {
 ////===----------------------------------------------------------------------===//
 
 void ProcedureAST::toPrint(std::ofstream &File) {
-  File << "\t\t\t-------\n";
-  File << "  -> ProcedureAST\n";
-  Proto->toPrint(File);
-  File << std::endl << "\t";
-  Body->toPrint(File); 
-  File << std::endl;
-  File << "\t\t\t-------\n";
+  //File << "\t\t\t-------\n";
+  //File << "  -> ProcedureAST\n";
+  //Proto->toPrint(File);
+  //File << std::endl << "\t";
+  //Body->toPrint(File); 
+  //File << std::endl;
+  //File << "\t\t\t-------\n";
 }
 
 llvm::Function* ProcedureAST::codegen() {
   //check symbol table
-  //llvm::Function *TheFunction = Proto->codegen();
+  llvm::Function *TheFunction = Proto->codegen();
 
-  //if(!TheFunction)
-  //  return nullptr;
+  if(!TheFunction)
+    return nullptr;
   
   //llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
   //Builder.SetInsertPoint(BB);
@@ -256,6 +271,6 @@ llvm::Function* ProcedureAST::codegen() {
   //  Builder.CreateRet(RetVal);
 
   //llvm::VerifyFunction(*TheFunction);
-
-  return nullptr;
+  
+  return TheFunction;
 }

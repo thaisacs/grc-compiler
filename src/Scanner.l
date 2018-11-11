@@ -64,13 +64,13 @@ string     "\"".*"\""
 "for"    { return FOR;    }
 "if"     { return IF;     }
 "read"   { return READ;   }
+"write"  { return WRITE;  }
 "return" { return RETURN; }
 "skip"   { return SKIP;   }
 "stop"   { return STOP;   }
 "true"   { return TRUE;   }
 "var"    { return VAR;    }
 "while"  { return WHILE;  }
-"write"  { return WRITE;  }
 
 {identifier} { yylval.S = new char[std::strlen(yytext)];
                std::strcpy(yylval.S, yytext);

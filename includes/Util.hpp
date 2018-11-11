@@ -11,8 +11,6 @@
 struct Parameter {
   std::string Name;
   grc::Type* T;
-  bool isArray;
-  int Size;
 };
 
 struct Parameters{
@@ -43,6 +41,7 @@ grc::AssignAST* HandleAssign(uint8_t, const std::string);
 grc::ExprAST* HandleCmdWhile(grc::ExprAST*, grc::ExprAST*);
 
 grc::PrototypeAST* HandlePrototype(const std::string, Parameters*); 
+grc::PrototypeAST* HandlePrototype(const std::string, Parameters*, grc::Type*); 
 Parameter* HandleParameter(const std::string&, bool); 
 Parameters* HandleParameters(); 
 void HandleParameters(Parameters*, Parameter*);
@@ -52,8 +51,8 @@ void HandleListOfParams(Parameters*, Parameters*, grc::Type*);
 grc::ProcedureAST* HandleProcedure(grc::PrototypeAST*, grc::BlockAST*); 
 
 grc::VarExprAST* HandleListOfVar();
-void HandleListOfVar(grc::VarExprAST*, grc::Variable*);
-grc::Variable* HandleVar(const std::string&); 
+void HandleListOfVar(grc::VarExprAST*, grc::Var*);
+grc::Var* HandleVar(const std::string&); 
 void HandleVarCmd(grc::VarExprAST*, grc::Type*);
 
-grc::Variable* HandleVar(const std::string &Name, grc::ExprAST* Expr);
+grc::Var* HandleVar(const std::string &Name, grc::ExprAST* Expr);

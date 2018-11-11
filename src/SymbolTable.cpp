@@ -6,59 +6,82 @@ using namespace grc;
 //// Variable
 //===----------------------------------------------------------------------===//
 
+std::shared_ptr<Type> VariableSymbol::getType() {
+  return T;
+}
+
+SymbolType VariableSymbol::getSymbolType() {
+  return SymbolType::Variable;
+}
+
 void VariableSymbol::toPrint(std::ofstream &File) {
-  File << "Variable (Type: ";
-  T->toPrint(File);
-  if(T->getPrimitiveType() == PrimitiveType::INT) {
-    File << ", isArray: ";
-    if(isArray)
-      File << "True)";
-    else
-      File << "False)";
-  }else {
-    File << ")";
-  }
+  //File << "Variable (Type: ";
+  //T->toPrint(File);
+  //if(T->getPrimitiveType() == PrimitiveType::INT || 
+  //   T->getPrimitiveType() == PrimitiveType::BOOL) {
+  //  File << ", isArray: ";
+  //  if(isArray)
+  //    File << "True)";
+  //  else
+  //    File << "False)";
+  //}else {
+  //  File << ")";
+  //}
 }
 
 //===----------------------------------------------------------------------===//
-//// Prototype 
+//// Procedure 
 //===----------------------------------------------------------------------===//
 
+std::shared_ptr<Type> ProcedureSymbol::getType() {
+  return T;
+}
+
+SymbolType ProcedureSymbol::getSymbolType() {
+  return SymbolType::Procedure;
+}
+
 void ProcedureSymbol::toPrint(std::ofstream &File) {
-  File << "Procedure";
+  //File << "Procedure";
 }
 
 //===----------------------------------------------------------------------===//
 //// Function 
 //===----------------------------------------------------------------------===//
 
+std::shared_ptr<Type> FunctionSymbol::getType() {
+  return T;
+}
+
+SymbolType FunctionSymbol::getSymbolType() {
+  return SymbolType::Function;
+}
+
 void FunctionSymbol::toPrint(std::ofstream &File) {
-  File << "Function";
+  //File << "Function (Type: ";
+  //T->toPrint(File);
+  //File << ")";
 }
 
 //===----------------------------------------------------------------------===//
 //// Type 
 //===----------------------------------------------------------------------===//
 
-Type* Type::copy() {
-  return new Type(PT, Size);
-}
-
 void Type::toPrint(std::ofstream &File) {
-  switch(PT) {
-    case 0:
-      File << "INT";
-      break;
-    case 1:
-      File << "BOOL";
-      break;
-    case 2:
-      if(Size > 0)
-        File << "STRING[" << Size << "]";
-      else
-        File << "STRING";
-      break;
-  }
+  //switch(PT) {
+  //  case 0:
+  //    File << "INT";
+  //    break;
+  //  case 1:
+  //    File << "BOOL";
+  //    break;
+  //  case 2:
+  //    if(Size > 0)
+  //      File << "STRING[" << Size << "]";
+  //    else
+  //      File << "STRING";
+  //    break;
+  //}
 }
 
 //===----------------------------------------------------------------------===//
@@ -83,25 +106,11 @@ std::shared_ptr<Symbol> SymbolTable::findVariableSymbol(const std::string &Name)
   return nullptr;
 }
 
-void SymbolTable::setVariableValue(const std::string Name, llvm::Value* V) {
-  std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
-  for(it = Table.begin(); it != Table.end(); ++it) {
-    if(it->first == Name) {
-      it->second->setValue(V);
-    }
-  } 
-}
-
 void SymbolTable::toPrint(std::ofstream &File) {
-  std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
-  for (it = Table.begin(); it != Table.end(); ++it) {
-    File << "\t" << it->first << " => "; 
-    it->second->toPrint(File);
-    File << '\n';
-  }
-}
-
-llvm::Value* SymbolTable::getVariableValue(const std::string &Name) {
-  std::shared_ptr<Symbol> S = findVariableSymbol(Name);
-  return S->getValue();
+  //std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
+  //for (it = Table.begin(); it != Table.end(); ++it) {
+  //  File << "\t" << it->first << " => "; 
+  //  it->second->toPrint(File);
+  //  File << '\n';
+  //}
 }

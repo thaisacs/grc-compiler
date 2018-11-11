@@ -10,53 +10,62 @@
 #include <fstream>
 
 namespace grc {
-  enum SymbolType {VARIABLE, PROCEDURE, FUNCTION};
-  enum PrimitiveType {INT, BOOL, STRING};
+  enum SymbolType {Variable, Procedure, Function};
+  enum BasicType {Int, Bool, String, Undefined};
 
-  class Type {
-    PrimitiveType PT;
+  class PrimitiveType {
+    BasicType BT;
     int Size;
     public:
-      Type(PrimitiveType PT, int Size) : PT(PT), Size(Size) {}
-      Type* copy();
-      PrimitiveType getPrimitiveType() { return PT; }
+      PrimitiveType(BasicType BT, int Size) : BT(BT), Size(Size) {}
+      BasicType getBasicType() { return BT; }
       int getSize() { return Size; }
       void toPrint(std::ofstream&);
+  };
+
+  class Type {
+    std::shared_ptr<PrimitiveType> PT;
+    bool isArray;
+  public:
+    Type(std::shared_ptr<PrimitiveType> PT, bool isArray) : 
+      PT(PT), isArray(isArray) {}
+    std::shared_ptr<PrimitiveType> getPrimitiveType() { return PT; }
+    bool getIsArray() { return isArray; }
+    void toPrint(std::ofstream &File);
   };
 
   class Symbol {
   public:
     virtual ~Symbol() = default;
-    virtual SymbolType getType() = 0;
+    virtual std::shared_ptr<Type> getType() = 0;
+    virtual SymbolType getSymbolType() = 0;
     virtual void toPrint(std::ofstream&) = 0;
-    virtual void setValue(llvm::Value*) {};
-    virtual llvm::Value* getValue() {};
   };
  
   class VariableSymbol : public Symbol {
-    std::unique_ptr<Type> T;
-    bool isArray;
-    llvm::Value* V;
+    std::shared_ptr<Type> T;
   public:
-    VariableSymbol(std::unique_ptr<Type> T, bool isArray) : 
-      T(std::move(T)), isArray(isArray), V(nullptr) {}
-    SymbolType getType() override { return VARIABLE; }
+    VariableSymbol(std::shared_ptr<Type> T) : T(T) {}
+    std::shared_ptr<Type> getType() override;
+    SymbolType getSymbolType() override;
     void toPrint(std::ofstream&) override;
-    llvm::Value* getValue() { return V; }
-    void setValue(llvm::Value* VarValue) { V = VarValue;  }
   };
 
   class ProcedureSymbol : public Symbol {
+    std::shared_ptr<Type> T;
   public:
-    ProcedureSymbol() {}
-    SymbolType getType() override { return PROCEDURE; }
+    ProcedureSymbol(std::shared_ptr<Type> T) : T(T) {}
+    std::shared_ptr<Type> getType() override;
+    SymbolType getSymbolType() override;
     void toPrint(std::ofstream&) override;
   };
 
   class FunctionSymbol : public Symbol {
+    std::shared_ptr<Type> T;
   public:
-    FunctionSymbol() {}
-    SymbolType getType() override { return FUNCTION; }
+    FunctionSymbol(std::shared_ptr<Type> T) : T(T) {}
+    std::shared_ptr<Type> getType() override;
+    SymbolType getSymbolType() override;
     void toPrint(std::ofstream&) override;
   }; 
 
@@ -66,8 +75,6 @@ namespace grc {
     SymbolTable() {}
     bool insert(const std::string&, std::shared_ptr<Symbol>);
     std::shared_ptr<Symbol> findVariableSymbol(const std::string&);
-    void setVariableValue(const std::string, llvm::Value*);
-    llvm::Value* getVariableValue(const std::string&); 
     void toPrint(std::ofstream&);
   };
 }

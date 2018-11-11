@@ -30,7 +30,16 @@ namespace grc {
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override; 
   };
-
+/*
+  class NumbersExprAST : public ExprAST {
+    std::vector<int> Numbers;
+  public:
+    NumbersExprAST() {}
+    void addNumber(int Number);
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+*/
   class BooleanExprAST: public ExprAST {
     bool Bool;
   public:
@@ -46,7 +55,23 @@ namespace grc {
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
+/*
+  class ReadExprAST: public ExprAST {
+    std::string Name;  
+  public:
+    ReadExprAST(cont std::string &Name) : Name(Name);
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
 
+  class WriteExprAST: public ExprAST {
+    std::string Name;  
+  public:
+    WriteExprAST(cont std::string &Name) : Name(Name);
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+*/
   class CallExprAST : public ExprAST {
     std::string Callee;
     std::vector<std::unique_ptr<ExprAST>> Args;
@@ -107,23 +132,21 @@ namespace grc {
     void toPrint(std::ofstream&) override;
   };
 
-  class Variable {
+  class Var {
     std::string Name;
     std::unique_ptr<ExprAST> Expr;
-    bool isArray;
   public:
-    Variable(const std::string Name, std::unique_ptr<ExprAST> Expr, bool isArray) : 
-      Name(Name), Expr(std::move(Expr)), isArray(isArray) {}
+    Var(const std::string Name, std::unique_ptr<ExprAST> Expr) : 
+      Name(Name), Expr(std::move(Expr)) {}
     void toPrint(std::ofstream&);
   };
 
   class VarExprAST : public ExprAST {
-    std::vector<std::unique_ptr<Variable>> Vars;
+    std::vector<std::unique_ptr<Var>> Vars;
     std::unique_ptr<Type> PrimitiveType;
   public:
     VarExprAST() {}
-    void addVar(std::unique_ptr<Variable>);
-    void setType(std::unique_ptr<Type>); 
+    void addVar(std::unique_ptr<Var>);
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
