@@ -12,9 +12,9 @@ namespace grc {
   public:
     Scope() {}
     void initializeScope(); 
-    bool insert(const std::string&, std::shared_ptr<Symbol>); 
-    std::shared_ptr<Symbol> findVariableSymbol(const std::string&); 
     void finalizeScope();
+    bool insert(const std::string&, std::shared_ptr<Symbol>); 
+    std::shared_ptr<Symbol> find(const std::string&); 
     void toPrint(std::ofstream&);
   };
 }

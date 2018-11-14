@@ -3,6 +3,55 @@
 using namespace grc;
 
 //===----------------------------------------------------------------------===//
+//// Type 
+//===----------------------------------------------------------------------===//
+
+void PrimitiveType::toPrint(std::ofstream &File) {
+  switch(BT) {
+    case BasicType::Int:
+      File << "Int";
+      break;
+    case BasicType::Bool:
+      File << "Bool";
+      break;
+    case BasicType::Void:
+      File << "Void";
+      break;
+    case BasicType::Undefined:
+      File << "Undefined";
+      break;
+    case BasicType::String:
+      if(Size > 0)
+        File << "String[" << Size << "]";
+      else
+        File << "String";
+      break;
+  }
+}
+
+void Type::toPrint(std::ofstream &File) {
+  PType->toPrint(File);
+  File << ", isArray: ";
+  if(AType->isArray) {
+    File << "True;";
+    File << " Size: ";
+    File << AType->Size;
+  } else {
+    File << "False";
+  }
+  //if(T->getPrimitiveType() == PrimitiveType::INT || 
+  //   T->getPrimitiveType() == PrimitiveType::BOOL) {
+  //  File << ", isArray: ";
+  //  if(isArray)
+  //    File << "True)";
+  //  else
+  //    File << "False)";
+  //}else {
+  //  File << ")";
+  //}*/
+}
+
+//===----------------------------------------------------------------------===//
 //// Variable
 //===----------------------------------------------------------------------===//
 
@@ -15,18 +64,9 @@ SymbolType VariableSymbol::getSymbolType() {
 }
 
 void VariableSymbol::toPrint(std::ofstream &File) {
-  //File << "Variable (Type: ";
-  //T->toPrint(File);
-  //if(T->getPrimitiveType() == PrimitiveType::INT || 
-  //   T->getPrimitiveType() == PrimitiveType::BOOL) {
-  //  File << ", isArray: ";
-  //  if(isArray)
-  //    File << "True)";
-  //  else
-  //    File << "False)";
-  //}else {
-  //  File << ")";
-  //}
+  File << "Variable (Type: ";
+  T->toPrint(File);
+  File << ")";
 }
 
 //===----------------------------------------------------------------------===//
@@ -42,7 +82,9 @@ SymbolType ProcedureSymbol::getSymbolType() {
 }
 
 void ProcedureSymbol::toPrint(std::ofstream &File) {
-  //File << "Procedure";
+  File << "Procedure (Type: ";
+  T->toPrint(File);
+  File << ")";
 }
 
 //===----------------------------------------------------------------------===//
@@ -58,30 +100,9 @@ SymbolType FunctionSymbol::getSymbolType() {
 }
 
 void FunctionSymbol::toPrint(std::ofstream &File) {
-  //File << "Function (Type: ";
-  //T->toPrint(File);
-  //File << ")";
-}
-
-//===----------------------------------------------------------------------===//
-//// Type 
-//===----------------------------------------------------------------------===//
-
-void Type::toPrint(std::ofstream &File) {
-  //switch(PT) {
-  //  case 0:
-  //    File << "INT";
-  //    break;
-  //  case 1:
-  //    File << "BOOL";
-  //    break;
-  //  case 2:
-  //    if(Size > 0)
-  //      File << "STRING[" << Size << "]";
-  //    else
-  //      File << "STRING";
-  //    break;
-  //}
+ File << "Function (Type: ";
+ T->toPrint(File);
+ File << ")";
 }
 
 //===----------------------------------------------------------------------===//
@@ -96,7 +117,7 @@ bool SymbolTable::insert(const std::string &Name, std::shared_ptr<Symbol> Symbol
   return false;
 }
 
-std::shared_ptr<Symbol> SymbolTable::findVariableSymbol(const std::string &Name) {
+std::shared_ptr<Symbol> SymbolTable::find(const std::string &Name) {
   std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
   for(it = Table.begin(); it != Table.end(); ++it) {
     if(it->first == Name) {
@@ -107,10 +128,10 @@ std::shared_ptr<Symbol> SymbolTable::findVariableSymbol(const std::string &Name)
 }
 
 void SymbolTable::toPrint(std::ofstream &File) {
-  //std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
-  //for (it = Table.begin(); it != Table.end(); ++it) {
-  //  File << "\t" << it->first << " => "; 
-  //  it->second->toPrint(File);
-  //  File << '\n';
-  //}
+ std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
+ for (it = Table.begin(); it != Table.end(); ++it) {
+   File << "\t" << it->first << " => "; 
+   it->second->toPrint(File);
+   File << '\n';
+ }
 }

@@ -1,0 +1,18 @@
+parametros
+  a, a[]:int;
+
+declaração
+  a, [9]:int;
+
+tipo da função
+  int
+  string
+  string[9]
+  bool
+
+Representação: While
+  I: E.cod
+     if not E.end goto OUT
+     S.cod
+     goto I
+  OUT

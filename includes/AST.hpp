@@ -30,20 +30,35 @@ namespace grc {
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override; 
   };
-/*
-  class NumbersExprAST : public ExprAST {
-    std::vector<int> Numbers;
-  public:
-    NumbersExprAST() {}
-    void addNumber(int Number);
-    llvm::Value* codegen() override;
-    void toPrint(std::ofstream&) override;
-  };
-*/
+
   class BooleanExprAST: public ExprAST {
     bool Bool;
   public:
     BooleanExprAST(bool Bool) : Bool(Bool) {}
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+
+  class IntegersExprAST: public ExprAST {
+    std::vector<int> Ints;
+  public:
+    IntegersExprAST(std::vector<int> Ints) : Ints(std::move(Ints)) {}
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+  
+  class BooleansExprAST: public ExprAST {
+    std::vector<bool> Bools;
+  public:
+    BooleansExprAST(std::vector<bool> Bools) : Bools(std::move(Bools)) {}
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+
+  class StringExprAST: public ExprAST {
+    std::string String;
+  public:
+    StringExprAST(const std::string &String) : String(String) {}
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
@@ -63,15 +78,15 @@ namespace grc {
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
-
+*/
   class WriteExprAST: public ExprAST {
-    std::string Name;  
+    std::vector<std::unique_ptr<ExprAST>> Args;
   public:
-    WriteExprAST(cont std::string &Name) : Name(Name);
+    WriteExprAST(std::vector<std::unique_ptr<ExprAST>> Args) : Args(std::move(Args)) {}
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
-*/
+
   class CallExprAST : public ExprAST {
     std::string Callee;
     std::vector<std::unique_ptr<ExprAST>> Args;
@@ -79,6 +94,8 @@ namespace grc {
     CallExprAST(const std::string &Callee, 
         std::vector<std::unique_ptr<ExprAST>> Args) : 
       Callee(Callee), Args(std::move(Args)) {}
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
   };
 
   class UnaryExprAST: public ExprAST {
@@ -105,7 +122,8 @@ namespace grc {
     std::unique_ptr<ExprAST> Cond, Then, Else;
   public:
     IfExprAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<ExprAST> Then, 
-        std::unique_ptr<ExprAST> Else) : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
+        std::unique_ptr<ExprAST> Else) : 
+      Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
@@ -138,24 +156,22 @@ namespace grc {
   public:
     Var(const std::string Name, std::unique_ptr<ExprAST> Expr) : 
       Name(Name), Expr(std::move(Expr)) {}
+    std::string getName() { return Name; }
     void toPrint(std::ofstream&);
   };
 
   class VarExprAST : public ExprAST {
     std::vector<std::unique_ptr<Var>> Vars;
-    std::unique_ptr<Type> PrimitiveType;
   public:
-    VarExprAST() {}
-    void addVar(std::unique_ptr<Var>);
+    VarExprAST(std::vector<std::unique_ptr<Var>> Vars) : Vars(std::move(Vars)) {}
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
 
-  class BlockAST : public ExprAST {
+  class BlockExprAST : public ExprAST {
     std::vector<std::unique_ptr<ExprAST>> Exps;
   public:
-    BlockAST() {}; 
-    void addExprAST(std::unique_ptr<ExprAST> Exp);
+    BlockExprAST(std::vector<std::unique_ptr<ExprAST>> Exps) : Exps(std::move(Exps)) {}; 
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override; 
   };
@@ -171,11 +187,11 @@ namespace grc {
     llvm::Function* codegen();
   };
 
-  class ProcedureAST {
+  class SubroutineAST {
     std::unique_ptr<PrototypeAST> Proto;
-    std::unique_ptr<BlockAST> Body; 
+    std::unique_ptr<BlockExprAST> Body; 
   public:
-    ProcedureAST(std::unique_ptr<PrototypeAST> Proto, std::unique_ptr<BlockAST> Body) : 
+    SubroutineAST(std::unique_ptr<PrototypeAST> Proto, std::unique_ptr<BlockExprAST> Body) : 
       Proto(std::move(Proto)), Body(std::move(Body)) {}
     void toPrint(std::ofstream&);
     llvm::Function* codegen();

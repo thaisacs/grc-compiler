@@ -20,12 +20,13 @@ using namespace llvm::sys;
 
 extern int yyparse();
 extern FILE *yyin;
+extern bool isError;
 
 llvm::LLVMContext TheContext;
 std::unique_ptr<llvm::Module> TheModule;
-
 std::shared_ptr<grc::Scope> S = std::make_shared<grc::Scope>();
 std::unique_ptr<grc::Log> LOG = std::make_unique<grc::Log>("GRCLog.out");
+bool isError;
 
 void InitializeModuleAndPassManager() {
   // Open a new Module
@@ -33,19 +34,20 @@ void InitializeModuleAndPassManager() {
 }
 
 int main(int argc, char *argv[]) {
+  isError = false;
+  
   if(argc < 2)
     exit(1);
   
   FILE *i = fopen(argv[1], "r");
   
   InitializeModuleAndPassManager();
+  
   S->initializeScope();
   
   yyin = i;
   yyparse();
-  
-  
-  LOG->scopes(S);
+
   S->finalizeScope();
   
   // Initialize the target registry etc.
@@ -61,9 +63,6 @@ int main(int argc, char *argv[]) {
   std::string Error;
   auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
 
-  // Print an error and exit if we couldn't find the requested target.
-  // This generally occurs if we've forgotten to initialise the
-  // TargetRegistry or we have a bogus target triple.
   if (!Target) {
     errs() << Error;
     return 1;
@@ -98,12 +97,12 @@ int main(int argc, char *argv[]) {
 
   pass.run(*TheModule);
   dest.flush();
-
+ 
   TheModule->print(llvm::errs(), nullptr);
   
-  //outs() << "Wrote " << Filename << "\n";
-
-  //system("clang-7 prog.o");
-
+  //if(!isError) {
+  //  outs() << "Wrote " << Filename << "\n";
+  //  system("clang-7 prog.o");
+  //}
   return 0;
 }

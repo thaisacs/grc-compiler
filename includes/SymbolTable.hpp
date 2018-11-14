@@ -11,7 +11,12 @@
 
 namespace grc {
   enum SymbolType {Variable, Procedure, Function};
-  enum BasicType {Int, Bool, String, Undefined};
+  enum BasicType {Int, Bool, String, Void, Undefined};
+
+  struct ArrayType {
+    bool isArray;
+    int Size;
+  };
 
   class PrimitiveType {
     BasicType BT;
@@ -24,13 +29,14 @@ namespace grc {
   };
 
   class Type {
-    std::shared_ptr<PrimitiveType> PT;
-    bool isArray;
+    std::shared_ptr<PrimitiveType> PType;
+    std::shared_ptr<ArrayType> AType;
   public:
-    Type(std::shared_ptr<PrimitiveType> PT, bool isArray) : 
-      PT(PT), isArray(isArray) {}
-    std::shared_ptr<PrimitiveType> getPrimitiveType() { return PT; }
-    bool getIsArray() { return isArray; }
+    Type(std::shared_ptr<PrimitiveType> PT, std::shared_ptr<ArrayType> AT) : PType(PT), AType(AT) { }
+    void setPrimitiveType(std::shared_ptr<PrimitiveType> P) { PType = P; }
+    std::shared_ptr<PrimitiveType> getPrimitiveType() { return PType; }
+    void setArrayType(std::shared_ptr<ArrayType> A) { AType = A; }
+    std::shared_ptr<ArrayType> getArrayType() { return AType; }
     void toPrint(std::ofstream &File);
   };
 
@@ -74,7 +80,7 @@ namespace grc {
   public:    
     SymbolTable() {}
     bool insert(const std::string&, std::shared_ptr<Symbol>);
-    std::shared_ptr<Symbol> findVariableSymbol(const std::string&);
+    std::shared_ptr<Symbol> find(const std::string&);
     void toPrint(std::ofstream&);
   };
 }

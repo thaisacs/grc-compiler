@@ -17,9 +17,9 @@ bool Scope::insert(const std::string &Name, std::shared_ptr<Symbol> Symbol) {
   return false;
 }
 
-std::shared_ptr<Symbol> Scope::findVariableSymbol(const std::string &Name) {
+std::shared_ptr<Symbol> Scope::find(const std::string &Name) {
   for(int i = SymbolTables.size() - 1; i >= 0; i--) {
-    auto Symb = SymbolTables[i]->findVariableSymbol(Name);
+    auto Symb = SymbolTables[i]->find(Name);
     if(Symb != nullptr)
       return Symb;
   }

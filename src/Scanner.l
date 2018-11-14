@@ -71,16 +71,21 @@ string     "\"".*"\""
 "true"   { return TRUE;   }
 "var"    { return VAR;    }
 "while"  { return WHILE;  }
+"import" { return IMPORT; }
+"io"     { return IO;     }
 
 {identifier} { yylval.S = new char[std::strlen(yytext)];
                std::strcpy(yylval.S, yytext);
-               return IDENTIFIER;
-             }
-{number}     { yylval.N = atoi(yytext); return NUMBER; }
-{string}     { /*yylval.str = yytext;*/ return WORD;   }
+               return IDENTIFIER; }
 
-{comment}    {             }
-{whitespace} {             }
+{number}     { yylval.N = atoi(yytext); return NUMBER;  }
+
+{string}     { yylval.S = new char[std::strlen(yytext)]; 
+               std::strcpy(yylval.S, yytext);
+               return WORD;}
+
+{comment}    { yylineno++; }
 {linefeed}   { yylineno++; }
+{whitespace} {             }
 
 %%
