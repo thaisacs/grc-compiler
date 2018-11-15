@@ -9,6 +9,10 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/GlobalVariable.h"
+#include "llvm/ADT/APFloat.h"
+#include "llvm/Support/Casting.h"
+
+#include "llvm/IR/NoFolder.h"
 
 #include "Scope.hpp"
 #include "Log.hpp"
@@ -19,7 +23,6 @@ extern llvm::LLVMContext TheContext;
 extern std::unique_ptr<llvm::Module> TheModule;
 extern std::unique_ptr<Log> LOG;
 extern std::shared_ptr<Scope> S;
-
 llvm::IRBuilder<> Builder(TheContext);
 
 //===------------------------------------------------------------------------===//
@@ -34,27 +37,30 @@ static llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function *TheFunction,
   auto AType = T->getArrayType();
   auto PType = T->getPrimitiveType();
   
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), 
+          TheFunction->getEntryBlock().begin());
+  
   switch(PType->getBasicType()) {
     case BasicType::Int:
       if(AType->isArray) {
-        llvm::Type* I = llvm::IntegerType::getInt32Ty(TheContext);
+        llvm::Type* I = llvm::IntegerType::getDoubleTy(TheContext);
         //llvm::ArrayType* arrayType = llvm::ArrayType::get(I, 5);
-        llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), 
-          TheFunction->getEntryBlock().begin());
         return TmpB.CreateAlloca(llvm::ArrayType::get(I, AType->Size), 0, 
           VarName.c_str());
       }else {
-        llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), 
-          TheFunction->getEntryBlock().begin());
-        return TmpB.CreateAlloca(llvm::Type::getInt32Ty(TheContext), 0, 
+        return TmpB.CreateAlloca(llvm::Type::getDoubleTy(TheContext), 0, 
           VarName.c_str());
       }
       break;
     case BasicType::Bool:
       if(AType->isArray) {
-        //ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
+        llvm::Type* I = llvm::IntegerType::getInt8Ty(TheContext);
+        //llvm::ArrayType* arrayType = llvm::ArrayType::get(I, 5);
+        return TmpB.CreateAlloca(llvm::ArrayType::get(I, AType->Size), 0, 
+          VarName.c_str());
       }else {
-        //ArgsVector.push_back(llvm::Type::getInt8Ty(TheContext));
+        return TmpB.CreateAlloca(llvm::Type::getInt8Ty(TheContext), 0, 
+          VarName.c_str());
       }
      break;
     case BasicType::String:
@@ -80,7 +86,11 @@ void IntegersExprAST::toPrint(std::ofstream &File) {
   File << "}";
 };
 
-llvm::Value* IntegersExprAST::codegen() {}
+llvm::Value* IntegersExprAST::codegen() {
+  llvm::Type* I = llvm::IntegerType::getDoubleTy(TheContext);
+  llvm::ArrayType* arrayType = llvm::ArrayType::get(I, Ints.size());
+
+}
 
 //===------------------------------------------------------------------------===//
 //// BooleansExprAST 
@@ -108,7 +118,8 @@ void NumberExprAST::toPrint(std::ofstream &File) {
 };
 
 llvm::Value* NumberExprAST::codegen() {
-  return llvm::ConstantInt::get(TheContext, llvm::APInt(32, Val));
+  double V = (double) Val;
+  return llvm::ConstantFP::get(TheContext, llvm::APFloat(V));
 }
 
 //===------------------------------------------------------------------------===//
@@ -138,7 +149,23 @@ void StringExprAST::toPrint(std::ofstream &File) {
 }
 
 llvm::Value* StringExprAST::codegen() {
-  std::string Str = String.substr(1, String.size()-2) + "\n";
+  std::string Str;
+  
+  unsigned i = 0;
+  while(i < String.size()) {
+    if(String[i] == '\%' && i < String.size() -1 && String[i+1] == 'b') {
+      Str += "%d";
+      i++;
+    }else if(String[i] == '\%' && i < String.size() -1 && String[i+1] == 'd') {
+      Str += "%.0f";
+      i++;
+    }else if(String[i] != '\"') {
+      Str +=  String[i];
+    }    
+    i++;
+  }
+  Str += "\n"; 
+  //std::string Str = String.substr(1, String.size()-2) + "\n";
   llvm::Value *StrV = Builder.CreateGlobalStringPtr(Str);
   return StrV;
 }
@@ -154,8 +181,10 @@ void VariableExprAST::toPrint(std::ofstream &File) {
 llvm::Value* VariableExprAST::codegen() {
   // Look this variable up in the function.
   llvm::Value *V = NamedValues[Name];
-  //if (!V)
-  //  return LogErrorV("Unknown variable name");
+  if (!V) {
+    LogError("error: Unknown variable name");
+    return nullptr;
+  }
   // Load the value.
   return Builder.CreateLoad(V, Name.c_str());
 }
@@ -186,13 +215,16 @@ void BinaryExprAST::toPrint(std::ofstream &File) {
 llvm::Value* BinaryExprAST::codegen() {
   llvm::Value *L = LHS->codegen();
   llvm::Value *R = RHS->codegen();
-  if("+"){
+   
+  if(Op == "+"){
     return Builder.CreateFAdd(L, R, "addtmp");
-  }else if("-") {
+  }else if(Op == "-") {
     return Builder.CreateFSub(L, R, "subtmp");
-  }else if("*") {
+  }else if(Op == "*") {
     return Builder.CreateFMul(L, R, "multmp");
-  }else if("<") {
+  }else if(Op == "/") {
+    return Builder.CreateFDiv(L, R, "divtmp");
+  }else if(Op == "<") {
     L = Builder.CreateFCmpULT(L, R, "cmptmp");
     return Builder.CreateUIToFP(L, llvm::Type::getInt32Ty(TheContext), "booltmp");
   }
@@ -261,31 +293,49 @@ void Var::toPrint(std::ofstream &File) {
 }
 
 llvm::Value* VarExprAST::codegen() {
-  std::vector<llvm::AllocaInst *> OldBindings;
+  std::vector<llvm::AllocaInst*> OldBindings;
   llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
   
   for(unsigned i = 0, e = Vars.size(); i != e; ++i) {
     const std::string &VarName = Vars[i]->getName();
-    ExprAST *Init = Vars[i]->getExpr();
     llvm::Value *InitVal;
-    if(Init) {
-      InitVal = Init->codegen();
-      if (!InitVal)
-        return nullptr;
-    }else { // If not specified, use 0
-      InitVal = llvm::ConstantInt::get(TheContext, llvm::APInt(32, 0));
+    
+    std::shared_ptr<Type> T = S->find(VarName)->getType();
+    auto AType = T->getArrayType();
+    auto PType = T->getPrimitiveType();
+    
+    if(AType->isArray) {
+      llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
+      InitVal =  llvm::ConstantInt::get(TheContext, llvm::APInt(8, 5));
+      
+
+      OldBindings.push_back(NamedValues[VarName]);
+      NamedValues[VarName] = Alloca;
+    }else {
+      ExprAST *Init = Vars[i]->getExpr();
+      if(Init) {
+        InitVal = Init->codegen();
+        if(!InitVal)
+          return nullptr;
+      }else { // If not specified, use 0.
+        switch(PType->getBasicType()) {
+          case BasicType::Int:
+            InitVal = llvm::ConstantFP::get(TheContext, llvm::APFloat(0.0));
+            break;
+          case BasicType::Bool:
+            InitVal =  llvm::ConstantInt::get(TheContext, llvm::APInt(8, 0));
+            break;
+          case BasicType::String:
+            break;
+        }
+      }
+      llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
+      Builder.CreateStore(InitVal, Alloca);
+
+      OldBindings.push_back(NamedValues[VarName]);
+      NamedValues[VarName] = Alloca;
     }
-
-    llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
-    Builder.CreateStore(InitVal, Alloca);
-
-    // Remember the old variable binding so that we can restore the binding when
-    // we unrecurse.
-    OldBindings.push_back(NamedValues[VarName]);
-    //// Remember this binding.
-    //
-    NamedValues[VarName] = Alloca;
-  }
+  } 
 }
 
 void VarExprAST::toPrint(std::ofstream &File) {
@@ -310,10 +360,14 @@ llvm::Value* WriteExprAST::codegen() {
     std::vector<llvm::Value*> ArgsV;
     
     for(unsigned i = 0; i < Args.size(); i++) {
+      //if (llvm::ConstantFP* F = llvm::dyn_cast<llvm::ConstantFP>(Args[i]->codegen())) {
+      //  F->getValueAPF().convertToInteger();
+      //}else {
+      //}
       ArgsV.push_back(Args[i]->codegen());
+      
     }
     
-    ArgsV.push_back(llvm::ConstantInt::get(TheContext, llvm::APInt(32, 5)));
     Builder.CreateCall(putsFunc, ArgsV, "retWrite");
   }else {
     LogError("error[all]: write function not fount. You must import io.");
@@ -440,6 +494,17 @@ llvm::Function* PrototypeAST::codegen() {
   for(auto &Arg : F->args())
     Arg.setName(Args[Args.size() - 1 - Idx++]);
 
+  //return F;
+
+
+ // std::vector<llvm::Type *> Doubles(Args.size(), llvm::Type::getInt32Ty(TheContext));
+ // llvm::FunctionType *FT =
+ // llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), Doubles, false);
+ // llvm::Function *F =
+ // llvm::Function::Create(FT, llvm::Function::ExternalLinkage, Name, TheModule.get());
+ // unsigned Idx = 0;
+ // for (auto &Arg : F->args())
+ // Arg.setName(Args[Idx++]);
   return F;
 }
 
@@ -474,10 +539,9 @@ llvm::Function* SubroutineAST::codegen() {
     NamedValues[Arg.getName()] = Alloca;
   //  S->setVariableValue((std::string)Arg.getName(),(llvm::Value*) &Arg);
   }
-
+  
   if (llvm::Value *RetVal = Body->codegen()) {
     //Finish off the function.
-    //Builder.CreateRet(RetVal);
     Builder.CreateRet(nullptr);
     // Validate the generated code, checking for consistency.
     verifyFunction(*TheFunction);
@@ -489,5 +553,4 @@ llvm::Function* SubroutineAST::codegen() {
   // Error reading body, remove function.
   TheFunction->eraseFromParent();
   return nullptr;
-
 }

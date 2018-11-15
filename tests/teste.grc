@@ -1,7 +1,7 @@
 import io
 
-def main() : int {
-  var c= 5+5: int;
-  
-  write "%d + %d = %d", c, c, c;
+def main() {
+  var b: int;
+  var a: bool;
+  write "%d %b",b, a;
 }

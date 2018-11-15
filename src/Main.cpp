@@ -1,10 +1,14 @@
+
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
+
+
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
+
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
@@ -15,6 +19,7 @@
 
 #include "Scope.hpp"
 #include "Log.hpp"
+#include "IROpt.hpp"
 
 using namespace llvm;
 using namespace llvm::sys;
@@ -27,6 +32,7 @@ llvm::LLVMContext TheContext;
 std::unique_ptr<llvm::Module> TheModule;
 std::shared_ptr<grc::Scope> S = std::make_shared<grc::Scope>();
 std::unique_ptr<grc::Log> LOG = std::make_unique<grc::Log>("GRCLog.out");
+
 bool isError;
 
 void InitializeModuleAndPassManager() {
@@ -34,7 +40,13 @@ void InitializeModuleAndPassManager() {
   TheModule = llvm::make_unique<llvm::Module>("grc-compiler", TheContext);
 }
 
+void OptRun() {
+  std::unique_ptr<grc::IROpt> IRO = llvm::make_unique<grc::IROpt>();
+  IRO->optimizeIRFunction(TheModule.get(), grc::IROpt::OptLevel::Basic);
+}
+
 int main(int argc, char *argv[]) {
+  
   isError = false;
   
   if(argc < 2)
@@ -51,7 +63,9 @@ int main(int argc, char *argv[]) {
 
   S->finalizeScope();
   
-  // Initialize the target registry etc.
+  TheModule->print(llvm::errs(), nullptr);
+  OptRun(); 
+  
   InitializeAllTargetInfos();
   InitializeAllTargets();
   InitializeAllTargetMCs();

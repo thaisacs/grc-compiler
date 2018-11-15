@@ -28,7 +28,6 @@ add_executable(
     ${FLEX_MyScanner_OUTPUTS})
 
 #llvm_map_components_to_libnames(llvm_libs bitreader core support)
+llvm_map_components_to_libnames(llvm_libs support core irreader)
 
-link_directories(/usr/lib/llvm-7/lib)
-
-target_link_libraries(grcc PUBLIC "LLVM-7")
+target_link_libraries(grcc PUBLIC "LLVM-7" ${llvm_libs} )

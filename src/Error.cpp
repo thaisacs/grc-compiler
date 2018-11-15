@@ -3,6 +3,6 @@
 using namespace grc;
 
 void LogError(const std::string &Str) {
-  std::cerr <<  Str << std::endl;;
+  std::cerr << Str << std::endl;;
 }
 
