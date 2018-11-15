@@ -9,6 +9,7 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+
 #include <iostream>
 #include <memory>
 
@@ -100,9 +101,11 @@ int main(int argc, char *argv[]) {
  
   TheModule->print(llvm::errs(), nullptr);
   
-  //if(!isError) {
-  //  outs() << "Wrote " << Filename << "\n";
-  //  system("clang-7 prog.o");
-  //}
+  Function *Main = TheModule->getFunction("main");
+  if(!isError && Main) {
+    outs() << "Wrote " << Filename << "\n";
+    system("clang-7 prog.o");
+  }
+  
   return 0;
 }

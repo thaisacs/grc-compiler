@@ -73,8 +73,11 @@ grc::SubroutineAST* HandleSubroutine(grc::PrototypeAST*, grc::BlockExprAST*);
 Expressions* HandleCmdCall();
 void HandleCmdCall(Expressions *, grc::ExprAST*);
 grc::CallExprAST* HandleCmdCall(const std::string&, Expressions*);
+
+
 Expressions* HandleCmdWrite(); 
 void HandleCmdWrite(Expressions *Exprs, grc::ExprAST* Expr); 
+void HandleCmdWrite(Expressions *Exprs, const std::string&); 
 grc::WriteExprAST* HandleCmdWrite(Expressions *Exprs); 
 
 //===------------------------------------------------------------------------===//

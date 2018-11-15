@@ -73,7 +73,7 @@
 %left '*' '%' '/'
 %nonassoc NOT UMINUS
 
-%type <E> exp boolExp  intExp arrayInitVar cmd 
+%type <E> exp boolExp  intExp arrayInitVar cmd writeCmd  simpleCmd
 /*
 ifCmd whileCmd body assignInit assign
 */
@@ -86,7 +86,7 @@ ifCmd whileCmd body assignInit assign
 %type <P> parameter
 %type <PS> parametersH parametersB listOfParamB listOfParamH
 %type <B> block
-%type <Expr> cmds
+%type <Expr> cmds writeCmdH writeCmdB
 %type <PT> prototype
 /*
 %type <PS> parameters subParameter listOfParameters
@@ -120,12 +120,14 @@ prototype: DEF IDENTIFIER '(' listOfParamH ')'          { $$ = HandlePrototype($
          | DEF IDENTIFIER '(' listOfParamH ')' ':' type { $$ = HandlePrototype($2, $4, $7); }
          ; 
 
-decSub: prototype block { auto Proc = HandleSubroutine($1, $2); 
-                          //LOG->procedure(Proc);
-                          //std::unique_ptr<grc::SubroutineAST> ProcAST(Proc);
-                          //auto ProcIR = ProcAST->codegen();
-                          LOG->scopes(S); 
-                          S->finalizeScope();
+decSub: prototype block { auto Sub = HandleSubroutine($1, $2); 
+                          if(Sub) {
+                            std::unique_ptr<grc::SubroutineAST> SubAST(Sub);
+                            auto SubIR = SubAST->codegen();
+                            LOG->subroutine(Sub);
+                            LOG->scopes(S); 
+                            S->finalizeScope();
+                          }
                         }
       ;
 
@@ -158,20 +160,19 @@ cmds: /*empty*/  { $$ = HandleCmd();           }
 
 cmd: simpleCmd { /*default*/ }
    ;
-
 /*
 body: block { /*default* }
     | cmd   { /*default* }
     ;
 */
 simpleCmd: varCmd     { /*default*/ }
+         | writeCmd   { /*default*/ }
 /*       | ifCmd      { default }
          | whileCmd   { default }
          | assignCmd  { default }
          | forCmd     { default }
          | varCmd     { default }
          | readCmd    { default }
-         | writeCmd   { default }
          | callSubCmd { default }*/
          ;
 /*
@@ -201,16 +202,23 @@ assignInit: IDENTIFIER ASSIGN_INIT exp { /*$$ = HandleAssign("=", $1, $3); }
 
 readCmd: READ IDENTIFIER ';' {}
        ;
-
-writeCmd: WRITE bodyWrite ';' { /*$$ = HandleCmdWrite($2); }
+*/
+writeCmd: WRITE writeCmdH ';' { $$ = HandleCmdWrite($2); }
         ;
 
-bodyWrite: /*empty         { /*$$ = HandleCmdWrite();           }
-         | bodyWrite exp     { /*HandleCmdWrite($1, $2); $$ = $1; }
-         | bodyWrite ',' exp { /*HandleCmdWrite($1, $3); $$ = $1; }
+writeCmdH: writeCmdB exp  { HandleCmdWrite($1, $2); $$ = $1; }
+         | writeCmdB WORD { HandleCmdWrite($1, $2); $$ = $1; }
          ;
 
-
+writeCmdB: /*empty*/     { $$ = HandleCmdWrite(); }
+         | writeCmdH ',' { /*default*/            }
+         ;
+/*
+bodyWrite: /*empty*         { /*$$ = HandleCmdWrite();*           }
+         | bodyWrite exp     { /*HandleCmdWrite($1, $2); $$ = $1;* }
+         | bodyWrite ',' exp { /*HandleCmdWrite($1, $3); $$ = $1;* }
+         ;
+/*
 callSubCmd: IDENTIFIER '(' listOfCallValues ')' ';' { /*$$ = HandleCmdCall($1, $3); } 
           ;
 
@@ -218,7 +226,6 @@ listOfCallValues: /*empty                { /*$$ = HandleCmdCall();           }
                 | listOfCallValues exp     { /*HandleCmdCall($1, $2); $$ = $1; } 
                 | listOfCallValues ',' exp { /*HandleCmdCall($1, $3); $$ = $1; }
 */
-
 varCmd: VAR listOfVarH ':' type ';' { $$ = HandleVarCmd($2, $4);                                 }
       | error ';'                   { HandleError("invalid variable declaration"); $$ = nullptr; }
       ;

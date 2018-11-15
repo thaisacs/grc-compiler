@@ -1,3 +1,7 @@
+import io
+
 def main() : int {
-  var c: int;
+  var c= 5+5: int;
+  
+  write "%d + %d = %d", c, c, c;
 }

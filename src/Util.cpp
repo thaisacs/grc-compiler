@@ -82,22 +82,23 @@ CallExprAST* HandleCmdCall(const std::string &Name, Expressions *Exprs) {
 }
 
 Expressions* HandleCmdWrite() {
-  //return new Expressions();
+  return new Expressions();
 }
 
 void HandleCmdWrite(Expressions *Exprs, ExprAST* Expr) {
-  //std::unique_ptr<grc::ExprAST> UPExpr(Expr);
-  //Exprs->ListOfExprs.push_back(std::move(UPExpr));
+  std::unique_ptr<grc::ExprAST> UPExpr(Expr);
+  Exprs->ListOfExprs.push_back(std::move(UPExpr));
+}
+
+void HandleCmdWrite(Expressions *Exprs, const std::string &String) {
+  auto StringAST = new StringExprAST(String);
+  std::unique_ptr<grc::ExprAST> UPExpr(StringAST);
+  Exprs->ListOfExprs.push_back(std::move(UPExpr));
 }
 
 WriteExprAST* HandleCmdWrite(Expressions *Exprs) {
-  //return new WriteExprAST(std::move(Exprs->ListOfExprs));
+  return new WriteExprAST(std::move(Exprs->ListOfExprs));
 }
-
-
-
-
-
 
 
 
@@ -181,7 +182,7 @@ void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, PrimitiveT
 }
 
 SubroutineAST* HandleSubroutine(PrototypeAST* Proto, BlockExprAST* Block) {
-  //create and return SubroutineAST node
+  // create and return SubroutineAST node
   std::unique_ptr<PrototypeAST> UPProto(Proto);
   std::unique_ptr<BlockExprAST> UPBlock(Block);
   return new SubroutineAST(std::move(UPProto), std::move(UPBlock));
@@ -189,23 +190,27 @@ SubroutineAST* HandleSubroutine(PrototypeAST* Proto, BlockExprAST* Block) {
 
 PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params) {
   std::vector<std::string> Args;
-  //insert procedure in symbol table
+  // insert procedure in symbol table
   std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(BasicType::Void, 0);
   std::shared_ptr<ArrayType> SPTArray(new ArrayType());
   SPTArray->isArray = false;
   SPTArray->Size = 0;
   std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
   std::unique_ptr<ProcedureSymbol> UPProc = std::make_unique<ProcedureSymbol>(SPT);
+  
+  
   S->insert(Name, std::move(UPProc));
-  //start new scope
+  
+  
+  // start new scope
   S->initializeScope();
-  //insert args in symbol table
+  // insert args in symbol table
   for(int i = 0; i < Params->ListOfParams.size(); i++) {
     std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Params->ListOfParams[i]->BT,
         Params->ListOfParams[i]->Size);
     std::shared_ptr<ArrayType> SPTArray(Params->ListOfParams[i]->AType);
     std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
-    //create a variable 
+    // create a variable 
     if(!S->find(Params->ListOfParams[i]->Name)) {
       std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPT);
       S->insert(Params->ListOfParams[i]->Name, std::move(SPVar));
@@ -216,7 +221,7 @@ PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params) {
       HandleError(errorMsg);
     }
   }
-  //create prototypeAST node
+  // create prototypeAST node
   return new PrototypeAST(Name, Args); 
 }
 
@@ -228,16 +233,20 @@ PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params, Primi
   SPTArray->Size = 0;
   std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
   std::unique_ptr<FunctionSymbol> UPFunc = std::make_unique<FunctionSymbol>(std::move(SPT));
+  
+  
   S->insert(Name, std::move(UPFunc));
-  //start new scope
+  
+  
+  // start new scope
   S->initializeScope();
-  //insert args in symbol table
+  // insert args in symbol table
   for(int i = 0; i < Params->ListOfParams.size(); i++) {
     std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Params->ListOfParams[i]->BT,
         Params->ListOfParams[i]->Size);
     std::shared_ptr<ArrayType> SPTArray(Params->ListOfParams[i]->AType);
     std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
-    //create a variable 
+    // create a variable 
     if(!S->find(Params->ListOfParams[i]->Name)) {
       std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPT);
       S->insert(Params->ListOfParams[i]->Name, std::move(SPVar));
@@ -248,7 +257,7 @@ PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params, Primi
       HandleError(errorMsg);
     }
   }
-  //create prototypeAST node
+  // create prototypeAST node
   return new PrototypeAST(Name, Args); 
 }
 
@@ -274,7 +283,7 @@ void HandleCmd(Expressions *Exprs, ExprAST *Expr) {
 ////===----------------------------------------------------------------------===//
 
 VarExprAST* HandleVarCmd(Variables *Vars, PrimitiveType *T) {
-  //insert Variables in Symbol Table and generates new VarExprAST
+  // insert Variables in Symbol Table and generates new VarExprAST
   std::vector<std::unique_ptr<Var>> VecVars;
   std::shared_ptr<PrimitiveType> SPT(T);
   for(int i = 0; i < Vars->ListOfVars.size(); i++) {
@@ -302,64 +311,64 @@ void HandleListOfVar(Variables *Vars, VariableAndType *V) {
   Vars->ListOfVars.push_back(std::move(UPVar));
 }
 
-//simple variable declarion without initialization
+// simple variable declarion without initialization
 VariableAndType* HandleVar(const std::string &Name) {
-  //config. Variable
+  // config. Variable
   std::unique_ptr<Var> UPVar(new Var(Name, nullptr));
-  //config. ArrayType
+  // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = false;
   SPAType->Size = 0;
-  //save Variable and Type together
+  // save Variable and Type together
   auto VT = new VariableAndType();
   VT->V = std::move(UPVar);
   VT->T = std::move(SPAType);
   return VT;
 }
 
-//simple variable declarion with initialization
+// simple variable declarion with initialization
 VariableAndType* HandleVar(const std::string &Name, ExprAST *Expr) {
   std::unique_ptr<ExprAST> UPExpr(Expr);
-  //config. Variable
+  // config. Variable
   std::unique_ptr<Var> UPVar(new Var(Name, std::move(UPExpr)));
-  //config. ArrayType
+  // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = false;
   SPAType->Size = 0;
-  //save Variable and Type together
+  // save Variable and Type together
   auto VT = new VariableAndType();
   VT->V = std::move(UPVar);
   VT->T = std::move(SPAType);
   return VT;
 }
 
-//array variable
+// array variable
 VariableAndType* HandleVar(const std::string &Name,  int Size, ExprAST *Expr) {
   std::unique_ptr<ExprAST> UPExpr(Expr);
-  //config. Variable
+  // config. Variable
   std::unique_ptr<Var> UPVar(new Var(Name, std::move(UPExpr)));
-  //config. ArrayType
+  // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = true;
   SPAType->Size = Size;
-  //save Variable and Type together
+  // save Variable and Type together
   auto VT = new VariableAndType();
   VT->V = std::move(UPVar);
   VT->T = std::move(SPAType);
   return VT;
 }
 
-//string variable
+// string variable
 VariableAndType* HandleVar(const std::string &Name, const std::string &String) {
   StringExprAST *Expr = new StringExprAST(String);
   std::unique_ptr<ExprAST> UPExpr(Expr);
-  //config. Variable
+  // config. Variable
   std::unique_ptr<Var> UPVar(new Var(Name, std::move(UPExpr)));
-  //config. ArrayType
+  // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = false;
   SPAType->Size = 0;
-  //save Variable and Type together
+  // save Variable and Type together
   auto VT = new VariableAndType();
   VT->V = std::move(UPVar);
   VT->T = std::move(SPAType);

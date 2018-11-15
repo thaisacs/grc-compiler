@@ -87,12 +87,19 @@ namespace grc {
     void toPrint(std::ofstream&) override;
   };
 
+  class ReturnExprAST: public ExprAST {
+    std::unique_ptr<ExprAST> Expr;
+  public:
+    ReturnExprAST(std::unique_ptr<ExprAST> Expr) : Expr(std::move(Expr)) {}
+    llvm::Value* codegen() override;
+    void toPrint(std::ofstream&) override;
+  };
+
   class CallExprAST : public ExprAST {
     std::string Callee;
     std::vector<std::unique_ptr<ExprAST>> Args;
   public:
-    CallExprAST(const std::string &Callee, 
-        std::vector<std::unique_ptr<ExprAST>> Args) : 
+    CallExprAST(const std::string &Callee, std::vector<std::unique_ptr<ExprAST>> Args) : 
       Callee(Callee), Args(std::move(Args)) {}
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
@@ -157,6 +164,7 @@ namespace grc {
     Var(const std::string Name, std::unique_ptr<ExprAST> Expr) : 
       Name(Name), Expr(std::move(Expr)) {}
     std::string getName() { return Name; }
+    ExprAST* getExpr() { return Expr.get(); }
     void toPrint(std::ofstream&);
   };
 

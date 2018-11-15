@@ -23,10 +23,47 @@ extern std::shared_ptr<Scope> S;
 llvm::IRBuilder<> Builder(TheContext);
 
 //===------------------------------------------------------------------------===//
-//// IntegersExprAST 
+//// Variable IR
 ////===----------------------------------------------------------------------===//
 
 static std::map<std::string, llvm::AllocaInst*> NamedValues;
+
+static llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function *TheFunction,
+    const std::string &VarName) {
+  std::shared_ptr<Type> T = S->find(VarName)->getType();
+  auto AType = T->getArrayType();
+  auto PType = T->getPrimitiveType();
+  
+  switch(PType->getBasicType()) {
+    case BasicType::Int:
+      if(AType->isArray) {
+        llvm::Type* I = llvm::IntegerType::getInt32Ty(TheContext);
+        //llvm::ArrayType* arrayType = llvm::ArrayType::get(I, 5);
+        llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), 
+          TheFunction->getEntryBlock().begin());
+        return TmpB.CreateAlloca(llvm::ArrayType::get(I, AType->Size), 0, 
+          VarName.c_str());
+      }else {
+        llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), 
+          TheFunction->getEntryBlock().begin());
+        return TmpB.CreateAlloca(llvm::Type::getInt32Ty(TheContext), 0, 
+          VarName.c_str());
+      }
+      break;
+    case BasicType::Bool:
+      if(AType->isArray) {
+        //ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
+      }else {
+        //ArgsVector.push_back(llvm::Type::getInt8Ty(TheContext));
+      }
+     break;
+    case BasicType::String:
+      //ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
+      break;
+    //default: // BasicType::Undefined and BasicType::Void
+      //ArgsVector.push_back(llvm::Type::getVoidTy(TheContext));
+  } 
+}
 
 //===------------------------------------------------------------------------===//
 //// IntegersExprAST 
@@ -43,8 +80,7 @@ void IntegersExprAST::toPrint(std::ofstream &File) {
   File << "}";
 };
 
-llvm::Value* IntegersExprAST::codegen() {
-}
+llvm::Value* IntegersExprAST::codegen() {}
 
 //===------------------------------------------------------------------------===//
 //// BooleansExprAST 
@@ -61,8 +97,7 @@ void BooleansExprAST::toPrint(std::ofstream &File) {
   File << "}";
 };
 
-llvm::Value* BooleansExprAST::codegen() {
-}
+llvm::Value* BooleansExprAST::codegen() {}
 
 //===------------------------------------------------------------------------===//
 //// NumberExprAST 
@@ -87,7 +122,12 @@ void BooleanExprAST::toPrint(std::ofstream &File) {
     File << "False";
 }
 
-llvm::Value* BooleanExprAST::codegen() {}
+llvm::Value* BooleanExprAST::codegen() {
+  if(Bool)
+    return llvm::ConstantInt::get(TheContext, llvm::APInt(8, 1));
+  else
+    return llvm::ConstantInt::get(TheContext, llvm::APInt(8, 0));
+}
 
 //===------------------------------------------------------------------------===//
 //// StringExprAST 
@@ -97,7 +137,11 @@ void StringExprAST::toPrint(std::ofstream &File) {
   File << String;
 }
 
-llvm::Value* StringExprAST::codegen() {}
+llvm::Value* StringExprAST::codegen() {
+  std::string Str = String.substr(1, String.size()-2) + "\n";
+  llvm::Value *StrV = Builder.CreateGlobalStringPtr(Str);
+  return StrV;
+}
 
 //===------------------------------------------------------------------------===//
 //// VariableExprAST 
@@ -108,9 +152,12 @@ void VariableExprAST::toPrint(std::ofstream &File) {
 }
 
 llvm::Value* VariableExprAST::codegen() {
-  auto Symb = S->find(Name);
-  //return S->getValue();
-  return nullptr;
+  // Look this variable up in the function.
+  llvm::Value *V = NamedValues[Name];
+  //if (!V)
+  //  return LogErrorV("Unknown variable name");
+  // Load the value.
+  return Builder.CreateLoad(V, Name.c_str());
 }
 
 //===------------------------------------------------------------------------===//
@@ -147,7 +194,7 @@ llvm::Value* BinaryExprAST::codegen() {
     return Builder.CreateFMul(L, R, "multmp");
   }else if("<") {
     L = Builder.CreateFCmpULT(L, R, "cmptmp");
-    return Builder.CreateUIToFP(L, llvm::Type::getDoubleTy(TheContext), "booltmp");
+    return Builder.CreateUIToFP(L, llvm::Type::getInt32Ty(TheContext), "booltmp");
   }
   return nullptr;
 }
@@ -208,20 +255,48 @@ llvm::Value* AssignAST::codegen() {
 ////===----------------------------------------------------------------------===//
 
 void Var::toPrint(std::ofstream &File) {
-  File << "    " << Name << " ";
-  if(Expr)
-    Expr->toPrint(File);
+  File << Name << " ";
+  //if(Expr)
+  //  Expr->toPrint(File);
 }
 
 llvm::Value* VarExprAST::codegen() {
+  std::vector<llvm::AllocaInst *> OldBindings;
+  llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+  
+  for(unsigned i = 0, e = Vars.size(); i != e; ++i) {
+    const std::string &VarName = Vars[i]->getName();
+    ExprAST *Init = Vars[i]->getExpr();
+    llvm::Value *InitVal;
+    if(Init) {
+      InitVal = Init->codegen();
+      if (!InitVal)
+        return nullptr;
+    }else { // If not specified, use 0
+      InitVal = llvm::ConstantInt::get(TheContext, llvm::APInt(32, 0));
+    }
+
+    llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
+    Builder.CreateStore(InitVal, Alloca);
+
+    // Remember the old variable binding so that we can restore the binding when
+    // we unrecurse.
+    OldBindings.push_back(NamedValues[VarName]);
+    //// Remember this binding.
+    //
+    NamedValues[VarName] = Alloca;
+  }
 }
 
 void VarExprAST::toPrint(std::ofstream &File) {
-  File << " -> new VarExprAST\n";
+  File << "Var: ";
   for(int i = 0; i < Vars.size(); i++) {
     Vars[i]->toPrint(File);
-    File << "\n";
+    if(i < Vars.size() -1) {
+      File << ",";
+    }
   }
+  File << "\n";
 }
 
 //===------------------------------------------------------------------------===//
@@ -230,16 +305,32 @@ void VarExprAST::toPrint(std::ofstream &File) {
 
 llvm::Value* WriteExprAST::codegen() {
   llvm::Function* putsFunc = TheModule->getFunction("printf");
-  std::vector<llvm::Value *> ArgsV;
-  llvm::Value *formatStr = Builder.CreateGlobalStringPtr("amazing %d\n");
-  ArgsV.push_back(formatStr);
-  ArgsV.push_back(llvm::ConstantInt::get(TheContext, llvm::APInt(32, 5)));
-  Builder.CreateCall(putsFunc, ArgsV, "hello");
-  return nullptr;
+  
+  if(putsFunc) {
+    std::vector<llvm::Value*> ArgsV;
+    
+    for(unsigned i = 0; i < Args.size(); i++) {
+      ArgsV.push_back(Args[i]->codegen());
+    }
+    
+    ArgsV.push_back(llvm::ConstantInt::get(TheContext, llvm::APInt(32, 5)));
+    Builder.CreateCall(putsFunc, ArgsV, "retWrite");
+  }else {
+    LogError("error[all]: write function not fount. You must import io.");
+    return nullptr;
+  }
 }
 
 void WriteExprAST::toPrint(std::ofstream &File) {
 }
+
+//===------------------------------------------------------------------------===//
+//// ReturnExprAST 
+////===----------------------------------------------------------------------===//
+
+void ReturnExprAST::toPrint(std::ofstream &File) {}
+
+llvm::Value* ReturnExprAST::codegen() {}
 
 //===------------------------------------------------------------------------===//
 //// CallExprAST 
@@ -268,18 +359,17 @@ void CallExprAST::toPrint(std::ofstream &File) {
 ////===----------------------------------------------------------------------===//
 
 void BlockExprAST::toPrint(std::ofstream &File) {
-  //File << "Block (";
-  //for(int i = 0; i < Exps.size(); i++) {
-  //  Exps[i]->toPrint(File);
-  //}
-  //File << ")";
+  File << "Block:\n";
+  for(int i = 0; i < Exps.size(); i++) {
+    Exps[i]->toPrint(File);
+  }
 }
 
 llvm::Value* BlockExprAST::codegen() {
   for(int i = 0; i < Exps.size(); i++) {
     Exps[i]->codegen();
   }
-  return nullptr; 
+  return llvm::ConstantInt::get(TheContext, llvm::APInt(32, 0));
 }
 
 //===------------------------------------------------------------------------===//
@@ -287,53 +377,60 @@ llvm::Value* BlockExprAST::codegen() {
 ////===----------------------------------------------------------------------===//
 
 void PrototypeAST::toPrint(std::ofstream &File) {
-  File << "\tName: " << Name;
+  File << "Prototype: Name(" << Name << ") e Args( ";
+  for(int i = 0; i < Args.size(); i++) {
+    File << Args[i];
+    if(i < Args.size() - 1) {
+      File << ",";
+    }
+  }
+  File << ")" << std::endl;
 }
 
 llvm::Function* PrototypeAST::codegen() {
   std::vector<llvm::Type*> ArgsVector;
-  llvm::FunctionType *FT = nullptr;
-  /*
+  llvm::FunctionType *FT;
+  
   for(int i = Args.size()-1; i >= 0; i--) {
-    auto Var = S->find(Args[i]);  
-    auto T = Var->getType();
+    auto T = S->find(Args[i])->getType();
+    auto PType = T->getPrimitiveType();
+    auto AType = T->getArrayType();
     //set args type
-    
-    switch(T->getPrimitiveType()->getBasicType()) {
+    switch(PType->getBasicType()) {
       case BasicType::Int:
-        if(T->getIsArray()) {
+        if(AType->isArray) {
           ArgsVector.push_back(llvm::Type::getInt32PtrTy(TheContext));
         }else {
           ArgsVector.push_back(llvm::Type::getInt32Ty(TheContext));
         }
         break;
       case BasicType::Bool:
-        if(T->getIsArray()) {
+        if(AType->isArray) {
           ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
         }else {
           ArgsVector.push_back(llvm::Type::getInt8Ty(TheContext));
         }
-        break;
+       break;
       case BasicType::String:
-        ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
+        //ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
         break;
-      case BasicType::Void:
-        ArgsVector.push_back(llvm::Type::getVoidTy(TheContext));
-        break;
-      default: // BasicType::Undefined:
+      default: // BasicType::Undefined and BasicType::Void
         ArgsVector.push_back(llvm::Type::getVoidTy(TheContext));
     }
   }
   
-  auto Func = S->find(Name);
-  auto T = Func->getType();
-  switch(T->getPrimitiveType()->getBasicType()) {
+  auto T = S->find(Name)->getType()->getPrimitiveType();
+  
+  switch(T->getBasicType()) {
     case BasicType::Int:
       FT = llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), ArgsVector, false);
       break;
-    case BasicType::Void:
-      FT = llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), ArgsVector, false);
+    case BasicType::Bool:
+      FT = llvm::FunctionType::get(llvm::Type::getInt8Ty(TheContext), ArgsVector, false);
+    case BasicType::String:
       break;
+    default:
+      FT = llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), ArgsVector, false);
   }
   
   llvm::Function* F = llvm::Function::Create(
@@ -342,8 +439,8 @@ llvm::Function* PrototypeAST::codegen() {
   unsigned Idx = 0;
   for(auto &Arg : F->args())
     Arg.setName(Args[Args.size() - 1 - Idx++]);
-*/
-  return nullptr;
+
+  return F;
 }
 
 //===------------------------------------------------------------------------===//
@@ -351,13 +448,10 @@ llvm::Function* PrototypeAST::codegen() {
 ////===----------------------------------------------------------------------===//
 
 void SubroutineAST::toPrint(std::ofstream &File) {
-  //File << "\t\t\t-------\n";
-  //File << "  -> ProcedureAST\n";
-  //Proto->toPrint(File);
-  //File << std::endl << "\t";
-  //Body->toPrint(File); 
-  //File << std::endl;
-  //File << "\t\t\t-------\n";
+  File << "#ProcedureAST\n";
+  Proto->toPrint(File);
+  Body->toPrint(File); 
+  File << "#\n\n";
 }
 
 llvm::Function* SubroutineAST::codegen() {
@@ -370,24 +464,30 @@ llvm::Function* SubroutineAST::codegen() {
   llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
   Builder.SetInsertPoint(BB);
 
-  //for(auto &Arg : TheFunction->args())
+  NamedValues.clear();
+  for(auto &Arg : TheFunction->args()) {
+    //Create an alloca for this variable.
+    llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, Arg.getName());
+    //Store the initial value into the alloca.
+    Builder.CreateStore(&Arg, Alloca);
+    //Add arguments to variable symbol table.
+    NamedValues[Arg.getName()] = Alloca;
   //  S->setVariableValue((std::string)Arg.getName(),(llvm::Value*) &Arg);
+  }
 
-  llvm::Value* RetVal = Body->codegen();
-  
-  //if (llvm::Value *RetVal = Body->codegen()) {
-  //  Builder.CreateRet(RetVal);
-  //  verifyFunction(*TheFunction);
-  //  return TheFunction;
-  //}
+  if (llvm::Value *RetVal = Body->codegen()) {
+    //Finish off the function.
+    //Builder.CreateRet(RetVal);
+    Builder.CreateRet(nullptr);
+    // Validate the generated code, checking for consistency.
+    verifyFunction(*TheFunction);
+    // Run the optimizer on the function.
+    //TheFPM->run(*TheFunction);
+    return TheFunction;
+  }
 
-  //  RetVal->print(llvm::errs());
-  Builder.CreateRet(nullptr);
+  // Error reading body, remove function.
+  TheFunction->eraseFromParent();
+  return nullptr;
 
-  //llvm::VerifyFunction(*TheFunction);
-  
-  return TheFunction;
 }
-
-//llvm::Type* I = llvm::IntegerType::getInt8Ty(TheContext);
-//llvm::ArrayType* arrayType = llvm::ArrayType::get(I, 5);

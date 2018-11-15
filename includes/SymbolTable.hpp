@@ -11,7 +11,7 @@
 
 namespace grc {
   enum SymbolType {Variable, Procedure, Function};
-  enum BasicType {Int, Bool, String, Void, Undefined};
+  enum BasicType {Int, Bool, String, Void};
 
   struct ArrayType {
     bool isArray;

@@ -17,9 +17,6 @@ void PrimitiveType::toPrint(std::ofstream &File) {
     case BasicType::Void:
       File << "Void";
       break;
-    case BasicType::Undefined:
-      File << "Undefined";
-      break;
     case BasicType::String:
       if(Size > 0)
         File << "String[" << Size << "]";
@@ -128,10 +125,10 @@ std::shared_ptr<Symbol> SymbolTable::find(const std::string &Name) {
 }
 
 void SymbolTable::toPrint(std::ofstream &File) {
- std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
- for (it = Table.begin(); it != Table.end(); ++it) {
-   File << "\t" << it->first << " => "; 
-   it->second->toPrint(File);
-   File << '\n';
- }
+  std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
+  for (it = Table.begin(); it != Table.end(); ++it) {
+    File << " " << it->first << " => "; 
+    it->second->toPrint(File);
+    File << '\n';
+  }
 }
