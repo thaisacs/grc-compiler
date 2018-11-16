@@ -30,6 +30,7 @@ ExprAST* HandleExpression(const std::string &Op, ExprAST *ExprL, ExprAST *ExprR)
 ExprAST* HandleExpression(uint8_t Op, ExprAST* ExprL, ExprAST* ExprR) {
   std::unique_ptr<ExprAST> UPExprL(ExprL);
   std::unique_ptr<ExprAST> UPExprR(ExprR);
+  
   switch(Op) {
     case 1:
       return new BinaryExprAST(">", std::move(UPExprL), std::move(UPExprR));
@@ -38,9 +39,6 @@ ExprAST* HandleExpression(uint8_t Op, ExprAST* ExprL, ExprAST* ExprR) {
       return new BinaryExprAST("<", std::move(UPExprL), std::move(UPExprR));
       break;
     case 3:
-      return new BinaryExprAST("<>", std::move(UPExprL), std::move(UPExprR));
-      break;
-    case 4:
       return new BinaryExprAST(">=", std::move(UPExprL), std::move(UPExprR));
       break;
     default:
@@ -48,18 +46,29 @@ ExprAST* HandleExpression(uint8_t Op, ExprAST* ExprL, ExprAST* ExprR) {
   }
 }
 
+
+
+
+
+
+
 ExprAST* HandleCmdIf(ExprAST* Cond, ExprAST* Then, ExprAST* Else) {
-  //std::unique_ptr<ExprAST> UPCond(Cond);
-  //std::unique_ptr<ExprAST> UPThen(Then);
-  //std::unique_ptr<ExprAST> UPElse(Else);
-  //return new IfExprAST(std::move(UPCond), std::move(UPThen), std::move(UPElse));
+  std::unique_ptr<ExprAST> UPCond(Cond);
+  std::unique_ptr<ExprAST> UPThen(Then);
+  std::unique_ptr<ExprAST> UPElse(Else);
+  return new IfExprAST(std::move(UPCond), std::move(UPThen), std::move(UPElse));
 }
 
 ExprAST* HandleCmdIf(ExprAST* Cond, ExprAST* Then) {
-  //std::unique_ptr<ExprAST> UPCond(Cond);
-  //std::unique_ptr<ExprAST> UPThen(Then);
-  //return new IfExprAST(std::move(UPCond), std::move(UPThen), nullptr);
+  std::unique_ptr<ExprAST> UPCond(Cond);
+  std::unique_ptr<ExprAST> UPThen(Then);
+  return new IfExprAST(std::move(UPCond), std::move(UPThen), nullptr);
 }
+
+
+
+
+
 
 
 ExprAST* HandleCmdWhile(ExprAST* Cond, ExprAST* Block) {
@@ -92,7 +101,7 @@ void HandleCmdWrite(Expressions *Exprs, ExprAST* Expr) {
 
 void HandleCmdWrite(Expressions *Exprs, const std::string &String) {
   auto StringAST = new StringExprAST(String);
-  std::unique_ptr<grc::ExprAST> UPExpr(StringAST);
+  std::unique_ptr<ExprAST> UPExpr(StringAST);
   Exprs->ListOfExprs.push_back(std::move(UPExpr));
 }
 
@@ -100,45 +109,51 @@ WriteExprAST* HandleCmdWrite(Expressions *Exprs) {
   return new WriteExprAST(std::move(Exprs->ListOfExprs));
 }
 
+ReadExprAST* HandleCmdRead(const std::string &Iden) {
+  std::unique_ptr<ExprAST> VExpr(new grc::VariableExprAST(Iden));
+  return new ReadExprAST(std::move(VExpr));
+}
 
-
-
-
-
+//===------------------------------------------------------------------------===//
+//// Assign 
+////===----------------------------------------------------------------------===//
 
 AssignAST* HandleAssign(const std::string &Op, const std::string &Name, ExprAST* Expr) {
-  //std::shared_ptr<Symbol> Sym = S->findVariableSymbol(Name);
-  //if(Sym == nullptr) {
-  //  std::cout << "error\n";
-  //  exit(1);
-  //}else {
-  //  std::unique_ptr<ExprAST> UPExpr(Expr);
-  //  return new AssignAST(Op, Sym, std::move(UPExpr));
-  //}
+  std::shared_ptr<Symbol> Sym = S->find(Name);
+  if(Sym == nullptr) {
+    LogError("error[all]: there is no variable");
+    return nullptr;
+  }else {
+    std::unique_ptr<ExprAST> UPExpr(Expr);
+    return new AssignAST(Op, Name, std::move(UPExpr));
+  }
 }
 
 AssignAST* HandleAssign(const std::string &Name, uint8_t Op, ExprAST* Expr) {
-  //switch(Op) {
-  //  case 1:
-  //    return HandleAssign("+=", Name, Expr);
-  //  case 2:
-  //    return HandleAssign("-=", Name, Expr);
-  //  case 3:
-  //    return HandleAssign("*=", Name, Expr);
-  //  case 4:
-  //    return HandleAssign("/=", Name, Expr);
-  //  default:
-  //    return HandleAssign("%=", Name, Expr);
-  //}
+  std::cout << "hello\n";
+  switch(Op) {
+    case 1:
+      return HandleAssign("+=", Name, Expr);
+    case 2:
+      return HandleAssign("-=", Name, Expr);
+    case 3:
+      return HandleAssign("*=", Name, Expr);
+    case 4:
+      return HandleAssign("/=", Name, Expr);
+    default:
+      return HandleAssign("%=", Name, Expr);
+  }
+  return nullptr;
 }
 
 AssignAST* HandleAssign(uint8_t Op, const std::string &Name) {
-  //ExprAST* Expr = new NumberExprAST(1);
-  //if(Op == 1) { //++ -> += 1
-  //  return HandleAssign(Name, 1, Expr);
-  //}else {       //-- -> -= 1
-  //  return HandleAssign(Name, 2, Expr);
-  //}
+  ExprAST* Expr = new NumberExprAST(1);
+  if(Op == 1) { //++ -> += 1
+    return HandleAssign(Name, 1, Expr);
+  }else {       //-- -> -= 1
+    return HandleAssign(Name, 2, Expr);
+  }
+  return nullptr;
 }
 
 //===------------------------------------------------------------------------===//

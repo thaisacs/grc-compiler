@@ -56,13 +56,18 @@ grc::ExprAST* HandleExpression(uint8_t, grc::ExprAST*, grc::ExprAST*);
 //===------------------------------------------------------------------------===//
 //// Cmds 
 ////===----------------------------------------------------------------------===//
-
-grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*, grc::ExprAST*); 
-grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*); 
-grc::AssignAST* HandleAssign(const std::string&, const std::string, grc::ExprAST*); 
+//// Assign
+grc::AssignAST* HandleAssign(const std::string&, const std::string&, grc::ExprAST*); 
 grc::AssignAST* HandleAssign(const std::string&, uint8_t, grc::ExprAST*); 
 grc::AssignAST* HandleAssign(uint8_t, const std::string&); 
+
+//// If
+grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*, grc::ExprAST*); 
+grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*); 
+
+//// While
 grc::ExprAST* HandleCmdWhile(grc::ExprAST*, grc::ExprAST*);
+
 Parameter* HandleParameter(const std::string&, bool); 
 Parameters* HandleParameters(); 
 void HandleParameters(Parameters*, Parameter*);
@@ -74,11 +79,15 @@ Expressions* HandleCmdCall();
 void HandleCmdCall(Expressions *, grc::ExprAST*);
 grc::CallExprAST* HandleCmdCall(const std::string&, Expressions*);
 
+//===------------------------------------------------------------------------===//
+//// Read and Write 
+////===----------------------------------------------------------------------===//
 
 Expressions* HandleCmdWrite(); 
-void HandleCmdWrite(Expressions *Exprs, grc::ExprAST* Expr); 
-void HandleCmdWrite(Expressions *Exprs, const std::string&); 
-grc::WriteExprAST* HandleCmdWrite(Expressions *Exprs); 
+void HandleCmdWrite(Expressions*, grc::ExprAST*); 
+void HandleCmdWrite(Expressions*, const std::string&); 
+grc::WriteExprAST* HandleCmdWrite(Expressions*); 
+grc::ReadExprAST* HandleCmdRead(const std::string&); 
 
 //===------------------------------------------------------------------------===//
 //// Prototype 

@@ -33,9 +33,8 @@ string     "\"".*"\""
 
 ">"  { yylval.F = 1; return CMP; }
 "<"  { yylval.F = 2; return CMP; }
-"<>" { yylval.F = 3; return CMP; }
-">=" { yylval.F = 4; return CMP; }
-"<=" { yylval.F = 5; return CMP; }
+">=" { yylval.F = 3; return CMP; }
+"<=" { yylval.F = 4; return CMP; }
 
 "==" { return EQUAL; }
 "!=" { return DIFF;  }

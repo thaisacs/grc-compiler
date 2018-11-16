@@ -199,6 +199,11 @@ void UnaryExprAST::toPrint(std::ofstream &File) {
 }
 
 llvm::Value* UnaryExprAST::codegen() {
+  llvm::Value *R = Operand->codegen();
+  if(Op == "!") {
+  }else {
+    return Builder.CreateNeg(R, "tmpnot");
+  }
   return nullptr;
 }
 
@@ -224,9 +229,26 @@ llvm::Value* BinaryExprAST::codegen() {
     return Builder.CreateFMul(L, R, "multmp");
   }else if(Op == "/") {
     return Builder.CreateFDiv(L, R, "divtmp");
+  }else if(Op == "%") {
+    //llvm::Value *V = Builder.CreateFDiv(L, R, "divtmp");
+    //llvm::Value *U = Builder.CreateFMul(R, V, "multmp");
+    //return Builder.CreateFSub(U, L, "subtmp");
   }else if(Op == "<") {
-    L = Builder.CreateFCmpULT(L, R, "cmptmp");
-    return Builder.CreateUIToFP(L, llvm::Type::getInt32Ty(TheContext), "booltmp");
+    return Builder.CreateFCmpULT(L, R, "cmptmp");
+  }else if(Op == ">") {
+    return Builder.CreateFCmpUGT(L, R, "cmptmp");
+  }else if(Op == ">=") {
+    return Builder.CreateFCmpUGE(L, R, "cmptmp");
+  }else if(Op == "<=") {
+    return Builder.CreateFCmpULE(L, R, "cmptmp");
+  }else if(Op == "!=") {
+    return Builder.CreateFCmpUNE(L, R, "cmptmp");
+  }else if(Op == "==") {
+    return Builder.CreateFCmpUEQ(L, R, "cmptmp");
+  }else if(Op == "&&") {
+    return Builder.CreateAnd(L, R, "andtmp");
+  }else if(Op == "||") {
+    return Builder.CreateOr(L, R, "ortmp");
   }
   return nullptr;
 }
@@ -247,7 +269,24 @@ void IfExprAST::toPrint(std::ofstream &File) {
 }
 
 llvm::Value* IfExprAST::codegen() {
-  return Cond->codegen();
+  llvm::Value *CondV = Cond->codegen();
+  if(!CondV)
+    return nullptr;
+
+  CondV = Builder.CreateFCmpONE(CondV, 
+      llvm::ConstantFP::get(TheContext, llvm::APFloat(0.0)), "ifcond");
+
+  llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+
+  llvm::BasicBlock *ThenBB = llvm::BasicBlock::Create(TheContext, "then", TheFunction);
+  llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "else");
+  llvm::BasicBlock *MergeBB = llvm::BasicBlock::Create(TheContext, "ifcont");
+
+  Builder.CreateCondBr(CondV, ThenBB, ElseBB);
+
+  Builder.SetInsertPoint(ThenBB);
+
+  
 }
 
 //===------------------------------------------------------------------------===//
@@ -279,7 +318,40 @@ void AssignAST::toPrint(std::ofstream &File) {
 }
 
 llvm::Value* AssignAST::codegen() {
-  return Expr->codegen();
+  
+  llvm::Value *Val = Expr->codegen(); 
+  if(!Val)
+    return nullptr;
+
+  llvm::Value *Variable = NamedValues[Name];
+  if (!Variable) {
+    LogError("Unknown variable name");
+    return nullptr;
+  }
+    
+  llvm::Value *OldVal = Builder.CreateLoad(Variable, Name.c_str());
+
+  if(Op == "=") {
+    Builder.CreateStore(Val, Variable);
+    return Val;  
+  }else if(Op == "+=") {
+    llvm::Value *Sum = Builder.CreateFAdd(OldVal, Val, "addtmp");
+    Builder.CreateStore(Sum, Variable);
+    return Sum;
+  }else if(Op == "-=") {
+    llvm::Value *Sub = Builder.CreateFSub(OldVal, Val, "subtmp");
+    Builder.CreateStore(Sub, Variable);
+    return Sub;
+  }else if(Op == "*=") {
+    llvm::Value *Mul = Builder.CreateFMul(OldVal, Val, "multmp");
+    Builder.CreateStore(Mul, Variable);
+    return Mul;
+  }else if(Op == "/=") {
+    llvm::Value *Div = Builder.CreateFDiv(OldVal, Val, "divtmp");
+    Builder.CreateStore(Div, Variable);
+    return Div;
+  }else if(Op == "%=") {
+  } 
 }
 
 //===------------------------------------------------------------------------===//
@@ -307,7 +379,6 @@ llvm::Value* VarExprAST::codegen() {
     if(AType->isArray) {
       llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
       InitVal =  llvm::ConstantInt::get(TheContext, llvm::APInt(8, 5));
-      
 
       OldBindings.push_back(NamedValues[VarName]);
       NamedValues[VarName] = Alloca;
@@ -315,8 +386,9 @@ llvm::Value* VarExprAST::codegen() {
       ExprAST *Init = Vars[i]->getExpr();
       if(Init) {
         InitVal = Init->codegen();
-        if(!InitVal)
+        if(!InitVal) {
           return nullptr;
+        }
       }else { // If not specified, use 0.
         switch(PType->getBasicType()) {
           case BasicType::Int:
@@ -358,16 +430,9 @@ llvm::Value* WriteExprAST::codegen() {
   
   if(putsFunc) {
     std::vector<llvm::Value*> ArgsV;
-    
     for(unsigned i = 0; i < Args.size(); i++) {
-      //if (llvm::ConstantFP* F = llvm::dyn_cast<llvm::ConstantFP>(Args[i]->codegen())) {
-      //  F->getValueAPF().convertToInteger();
-      //}else {
-      //}
       ArgsV.push_back(Args[i]->codegen());
-      
     }
-    
     Builder.CreateCall(putsFunc, ArgsV, "retWrite");
   }else {
     LogError("error[all]: write function not fount. You must import io.");
@@ -375,8 +440,27 @@ llvm::Value* WriteExprAST::codegen() {
   }
 }
 
-void WriteExprAST::toPrint(std::ofstream &File) {
+void WriteExprAST::toPrint(std::ofstream &File) {}
+
+//===------------------------------------------------------------------------===//
+//// ReadExprAST 
+////===----------------------------------------------------------------------===//
+
+llvm::Value* ReadExprAST::codegen() {
+  llvm::Function* readFunc = TheModule->getFunction("scanf");
+  if(readFunc) {
+    //StringExprAST *S = new StringExprAST("%f");
+    //std::vector<llvm::Value*> ArgsV;
+    //ArgsV.push_back(S->codegen());
+    //ArgsV.push_back(Var->codegen());
+    //Builder.CreateCall(readFunc, ArgsV, "retRead");
+  }else {
+    LogError("error[all]: read function not fount. You must import io.");
+    return nullptr;
+  }
 }
+
+void ReadExprAST::toPrint(std::ofstream &File) {}
 
 //===------------------------------------------------------------------------===//
 //// ReturnExprAST 
@@ -494,17 +578,6 @@ llvm::Function* PrototypeAST::codegen() {
   for(auto &Arg : F->args())
     Arg.setName(Args[Args.size() - 1 - Idx++]);
 
-  //return F;
-
-
- // std::vector<llvm::Type *> Doubles(Args.size(), llvm::Type::getInt32Ty(TheContext));
- // llvm::FunctionType *FT =
- // llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), Doubles, false);
- // llvm::Function *F =
- // llvm::Function::Create(FT, llvm::Function::ExternalLinkage, Name, TheModule.get());
- // unsigned Idx = 0;
- // for (auto &Arg : F->args())
- // Arg.setName(Args[Idx++]);
   return F;
 }
 

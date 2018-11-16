@@ -73,10 +73,8 @@
 %left '*' '%' '/'
 %nonassoc NOT UMINUS
 
-%type <E> exp boolExp  intExp arrayInitVar cmd writeCmd  simpleCmd
-/*
-ifCmd whileCmd body assignInit assign
-*/
+%type <E> exp boolExp  intExp arrayInitVar cmd writeCmd readCmd simpleCmd 
+          assignInit assign ifCmd 
 %type <V> var simpleVar simpleInitVar arrayVar 
 %type <PMT> type
 %type <VS> listOfVarH listOfVarB
@@ -85,7 +83,7 @@ ifCmd whileCmd body assignInit assign
 %type <VE> varCmd 
 %type <P> parameter
 %type <PS> parametersH parametersB listOfParamB listOfParamH
-%type <B> block
+%type <B> block bodyH
 %type <Expr> cmds writeCmdH writeCmdB
 %type <PT> prototype
 /*
@@ -160,26 +158,31 @@ cmds: /*empty*/  { $$ = HandleCmd();           }
 
 cmd: simpleCmd { /*default*/ }
    ;
-/*
-body: block { /*default* }
-    | cmd   { /*default* }
-    ;
-*/
+
+
 simpleCmd: varCmd     { /*default*/ }
          | writeCmd   { /*default*/ }
-/*       | ifCmd      { default }
-         | whileCmd   { default }
-         | assignCmd  { default }
+         | readCmd    { /*default*/ }
+         | assignCmd  { /*default*/ }
+         | ifCmd      { /*default*/ }
+/*       | whileCmd   { default }
          | forCmd     { default }
          | varCmd     { default }
-         | readCmd    { default }
-         | callSubCmd { default }*/
+         | callSubCmd { default }
          ;
-/*
-ifCmd: IF '(' exp ')' body %prec END_ELSE { /*$$ = HandleCmdIf($3, $5);*     }
-     | IF '(' exp ')' body ELSE body      { /*$$ = HandleCmdIf($3, $5, $7);* }
+*/
+
+bodyH: bodyB block { $$ = $2;    }
+     | cmd         { /*default*/ }
      ;
 
+bodyB: /*empty*/  { S->initializeScope(); }
+     ;
+
+ifCmd: IF '(' exp ')' bodyH %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }
+     | IF '(' exp ')' bodyH ELSE bodyH     { $$ = HandleCmdIf($3, $5, $7); }
+     ;
+/*
 whileCmd: WHILE '(' exp ')' body { /*$$ = HandleCmdWhile($3, $5);* }
         ;
 
@@ -187,22 +190,21 @@ forCmd: FOR '(' assignInit ';' exp ';' assign ')' {}
        ;
 */
 
-/*
-assignCmd: assign ';'     { /*default* }
-         | assignInit ';' { /*default** }
+assignCmd: assign ';'     { /*default*/ }
+         | assignInit ';' { /*default*/ }
          ;
         
-assign: IDENTIFIER ASSIGN exp  { /*$$ = HandleAssign($1, $2, $3);* }
-      | IDENTIFIER ASSIGN_STEP { /*$$ = HandleAssign($2, $1);*     }
-      | ASSIGN_STEP IDENTIFIER { /*$$ = HandleAssign($1, $2);*     }
+assign: IDENTIFIER ASSIGN exp  { $$ = HandleAssign($1, $2, $3); }
+      | IDENTIFIER ASSIGN_STEP { $$ = HandleAssign($2, $1);     }
+      | ASSIGN_STEP IDENTIFIER { $$ = HandleAssign($1, $2);     }
       ;
 
-assignInit: IDENTIFIER ASSIGN_INIT exp { /*$$ = HandleAssign("=", $1, $3); }
+assignInit: IDENTIFIER ASSIGN_INIT exp { $$ = HandleAssign("=", $1, $3); }
           ;
 
-readCmd: READ IDENTIFIER ';' {}
+readCmd: READ IDENTIFIER ';' { $$ = HandleCmdRead($2); }
        ;
-*/
+
 writeCmd: WRITE writeCmdH ';' { $$ = HandleCmdWrite($2); }
         ;
 

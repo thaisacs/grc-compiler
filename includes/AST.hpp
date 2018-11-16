@@ -70,15 +70,15 @@ namespace grc {
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
-/*
+
   class ReadExprAST: public ExprAST {
-    std::string Name;  
+    std::unique_ptr<ExprAST> Var;
   public:
-    ReadExprAST(cont std::string &Name) : Name(Name);
+    ReadExprAST(std::unique_ptr<ExprAST> Var) : Var(std::move(Var)) {}
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };
-*/
+
   class WriteExprAST: public ExprAST {
     std::vector<std::unique_ptr<ExprAST>> Args;
   public:
@@ -148,11 +148,11 @@ namespace grc {
 
   class AssignAST : public ExprAST {
     std::string Op;
-    std::shared_ptr<Symbol> Var;
+    std::string Name;
     std::unique_ptr<ExprAST> Expr;
   public:
-    AssignAST(const std::string Op, std::shared_ptr<Symbol> Var, std::unique_ptr<ExprAST> Expr) : 
-      Op(Op), Var(Var), Expr(std::move(Expr)) {}
+    AssignAST(const std::string Op, const std::string &Name, std::unique_ptr<ExprAST> Expr) : 
+      Op(Op), Name(Name), Expr(std::move(Expr)) {}
     llvm::Value* codegen() override;
     void toPrint(std::ofstream&) override;
   };

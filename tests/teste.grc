@@ -1,7 +1,6 @@
 import io
 
 def main() {
-  var b: int;
-  var a: bool;
-  write "%d %b",b, a;
+  var a = 10, b = 3: int;
+  write "%d", a%b;
 }
