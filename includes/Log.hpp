@@ -21,8 +21,6 @@ namespace grc {
       File.close();
     }
     void scopes(std::shared_ptr<Scope>); 
-    void subroutine(SubroutineAST*);
-    void variable(VarExprAST*);
     void info(const std::string&);
   };
 }

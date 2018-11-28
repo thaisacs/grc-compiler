@@ -27,8 +27,10 @@ std::shared_ptr<Symbol> Scope::find(const std::string &Name) {
 }
 
 void Scope::toPrint(std::ofstream &File) {
+  File << "///--------------------" << "\n";
   for(int i = 0; i < SymbolTables.size(); i++) {
     File << "Scope " << i << "\n";
     SymbolTables[i]->toPrint(File);
   }
+  File << "///--------------------" << "\n";
 }

@@ -36,16 +36,6 @@ void Type::toPrint(std::ofstream &File) {
   } else {
     File << "False";
   }
-  //if(T->getPrimitiveType() == PrimitiveType::INT || 
-  //   T->getPrimitiveType() == PrimitiveType::BOOL) {
-  //  File << ", isArray: ";
-  //  if(isArray)
-  //    File << "True)";
-  //  else
-  //    File << "False)";
-  //}else {
-  //  File << ")";
-  //}*/
 }
 
 //===----------------------------------------------------------------------===//
@@ -81,6 +71,12 @@ SymbolType ProcedureSymbol::getSymbolType() {
 void ProcedureSymbol::toPrint(std::ofstream &File) {
   File << "Procedure (Type: ";
   T->toPrint(File);
+ File << ", Args: ";
+ for(unsigned i = 0; i < TArgs.size(); i++) {
+   File << "(" << std::to_string(i) << ": ";
+   TArgs[i]->toPrint(File);
+   File << ")";
+ }
   File << ")";
 }
 
@@ -99,6 +95,12 @@ SymbolType FunctionSymbol::getSymbolType() {
 void FunctionSymbol::toPrint(std::ofstream &File) {
  File << "Function (Type: ";
  T->toPrint(File);
+ File << ", Args: ";
+ for(unsigned i = 0; i < TArgs.size(); i++) {
+   File << "(" << std::to_string(i) << ": ";
+   TArgs[i]->toPrint(File);
+   File << ")";
+ }
  File << ")";
 }
 

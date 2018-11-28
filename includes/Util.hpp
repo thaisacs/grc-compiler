@@ -29,7 +29,7 @@ struct Expressions {
 };
 
 struct VariableAndType{
-  std::unique_ptr<grc::Var> V;
+  std::unique_ptr<grc::AssignExprAST> V;
   std::shared_ptr<grc::ArrayType> T;
 };
 
@@ -46,6 +46,14 @@ struct Booleans {
 };
 
 //===------------------------------------------------------------------------===//
+//// Variable
+////===----------------------------------------------------------------------===//
+
+grc::VariableExprAST* HandleVariable(const std::string&); 
+grc::VariableExprAST* HandleVariable(const std::string&, grc::ExprAST*);
+grc::VariableExprAST* HandleVariable(const std::string&, const std::string&);
+
+//===------------------------------------------------------------------------===//
 //// Expression 
 ////===----------------------------------------------------------------------===//
 
@@ -56,25 +64,26 @@ grc::ExprAST* HandleExpression(uint8_t, grc::ExprAST*, grc::ExprAST*);
 //===------------------------------------------------------------------------===//
 //// Cmds 
 ////===----------------------------------------------------------------------===//
-//// Assign
-grc::AssignAST* HandleAssign(const std::string&, const std::string&, grc::ExprAST*); 
-grc::AssignAST* HandleAssign(const std::string&, uint8_t, grc::ExprAST*); 
-grc::AssignAST* HandleAssign(uint8_t, const std::string&); 
+/// Assign
+grc::AssignExprAST* HandleAssign(const std::string&, const std::string&, grc::ExprAST*); 
+grc::AssignExprAST* HandleAssign(const std::string&, uint8_t, grc::ExprAST*); 
+grc::AssignExprAST* HandleAssign(uint8_t, const std::string&); 
 
-//// If
+/// If
 grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*, grc::ExprAST*); 
 grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*); 
 
-//// While
+/// While
 grc::ExprAST* HandleCmdWhile(grc::ExprAST*, grc::ExprAST*);
 
-Parameter* HandleParameter(const std::string&, bool); 
-Parameters* HandleParameters(); 
-void HandleParameters(Parameters*, Parameter*);
-grc::PrimitiveType* HandleType(grc::BasicType, int); 
-Parameters* HandleListOfParams();
-void HandleListOfParams(Parameters*, Parameters*, grc::PrimitiveType*); 
-grc::SubroutineAST* HandleSubroutine(grc::PrototypeAST*, grc::BlockExprAST*); 
+/// For
+grc::ExprAST* HandleCmdFor(grc::ExprAST*, grc::ExprAST*,
+    grc::ExprAST*, grc::ExprAST*); 
+
+/// Return
+grc::ExprAST* HandleCmdReturn(grc::ExprAST *Expr);
+
+/// Called
 Expressions* HandleCmdCall();
 void HandleCmdCall(Expressions *, grc::ExprAST*);
 grc::CallExprAST* HandleCmdCall(const std::string&, Expressions*);
@@ -90,12 +99,19 @@ grc::WriteExprAST* HandleCmdWrite(Expressions*);
 grc::ReadExprAST* HandleCmdRead(const std::string&); 
 
 //===------------------------------------------------------------------------===//
-//// Prototype 
+//// Prototype and Subroutine
 ////===----------------------------------------------------------------------===//
 
 grc::PrototypeAST* HandlePrototype(const std::string&, Parameters*); 
-grc::PrototypeAST* HandlePrototype(const std::string&, Parameters*, 
-    grc::PrimitiveType*); 
+grc::PrototypeAST* HandlePrototype(const std::string&, Parameters*, grc::PrimitiveType*); 
+Parameter* HandleParameter(const std::string&, bool); 
+Parameters* HandleParameters(); 
+void HandleParameters(Parameters*, Parameter*);
+grc::PrimitiveType* HandleType(grc::BasicType, int); 
+Parameters* HandleListOfParams();
+void HandleListOfParams(Parameters*, Parameters*, grc::PrimitiveType*); 
+grc::SubroutineAST* HandleSubroutine(grc::PrototypeAST*, grc::BlockExprAST*); 
+
 
 //===------------------------------------------------------------------------===//
 //// Block 
@@ -114,8 +130,10 @@ Variables* HandleListOfVar();
 void HandleListOfVar(Variables*, VariableAndType*);
 VariableAndType* HandleVar(const std::string&); 
 VariableAndType* HandleVar(const std::string&, grc::ExprAST*);
-VariableAndType* HandleVar(const std::string&,  int Size, grc::ExprAST*); 
+VariableAndType* HandleVar(const std::string&,  int); 
 VariableAndType* HandleVar(const std::string&, const std::string&);
+VariableAndType* HandleVar(const std::string Op, const std::string &Name, grc::ExprAST *Expr); 
+VariableAndType* HandleVar(const std::string &Name, int, grc::ExprAST *Expr);
 Booleans* HandleListOfBool();
 Integers* HandleListOfInt();
 void HandleBool(Booleans*, bool);
@@ -124,10 +142,9 @@ void HandleInt(Integers*, int);
 grc::IntegersExprAST* HandleInt(Integers*);
 
 //===------------------------------------------------------------------------===//
-//// Erros 
+//// Errors
 ////===----------------------------------------------------------------------===//
 
-void HandleError(const std::string&); 
 void VerifyMain(); 
 
 //===------------------------------------------------------------------------===//
@@ -136,4 +153,8 @@ void VerifyMain();
 
 void HandleImportIO(); 
 
+//===------------------------------------------------------------------------===//
+//// Stop Or Skip 
+////===----------------------------------------------------------------------===//
 
+grc::StopOrSkipExprAST* HandleCmdStopOrSkip(grc::BasicItCmd Type);

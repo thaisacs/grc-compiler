@@ -10,11 +10,34 @@ extern llvm::LLVMContext TheContext;
 extern std::unique_ptr<llvm::Module> TheModule;
 extern int yylineno;
 
-extern bool isError;
+//===------------------------------------------------------------------------===//
+//// Type 
+////===----------------------------------------------------------------------===//
 
 PrimitiveType* HandleType(BasicType T, int Size) {
   return new PrimitiveType(T, Size);
 }
+
+//===------------------------------------------------------------------------===//
+//// Variable 
+////===----------------------------------------------------------------------===//
+
+grc::VariableExprAST* HandleVariable(const std::string &Name) {
+  return new VariableExprAST(Name, nullptr);
+}
+
+grc::VariableExprAST* HandleVariable(const std::string &Name, grc::ExprAST *Expr) {
+  std::unique_ptr<ExprAST> UPExpr(Expr);
+  return new VariableExprAST(Name, std::move(UPExpr));
+}
+
+grc::VariableExprAST* HandleVariable(const std::string &Name, const std::string &Index) {
+  std::unique_ptr<ExprAST> UPExpr(new VariableExprAST(Index, nullptr));
+  return new VariableExprAST(Name, std::move(UPExpr));
+}
+//===------------------------------------------------------------------------===//
+//// Expression 
+////===----------------------------------------------------------------------===//
 
 ExprAST* HandleExpression(const std::string &Op, ExprAST *Operand) {
   std::unique_ptr<ExprAST> UPOp(Operand);
@@ -46,13 +69,25 @@ ExprAST* HandleExpression(uint8_t Op, ExprAST* ExprL, ExprAST* ExprR) {
   }
 }
 
+//===------------------------------------------------------------------------===//
+//// Cmd: Return 
+////===----------------------------------------------------------------------===//
 
+ExprAST* HandleCmdReturn(ExprAST *Expr) {
+  std::unique_ptr<ExprAST> UPVal(Expr);
+  return new ReturnExprAST(std::move(UPVal));
+}
 
-
-
-
-
+//===------------------------------------------------------------------------===//
+//// Cmd: If 
+////===----------------------------------------------------------------------===//
+/*
 ExprAST* HandleCmdIf(ExprAST* Cond, ExprAST* Then, ExprAST* Else) {
+  if(Cond->getResultingType() != BasicType::Bool) {
+    std::string ErrorMsg = "if condition is not of type Bool";
+    LogError(ErrorMsg, yylineno);
+    return nullptr; 
+  }
   std::unique_ptr<ExprAST> UPCond(Cond);
   std::unique_ptr<ExprAST> UPThen(Then);
   std::unique_ptr<ExprAST> UPElse(Else);
@@ -60,35 +95,108 @@ ExprAST* HandleCmdIf(ExprAST* Cond, ExprAST* Then, ExprAST* Else) {
 }
 
 ExprAST* HandleCmdIf(ExprAST* Cond, ExprAST* Then) {
+  if(Cond->getResultingType() != BasicType::Bool) {
+    std::string ErrorMsg = "if condition is not of type Bool";
+    LogError(ErrorMsg, yylineno);
+    return nullptr; 
+  }
   std::unique_ptr<ExprAST> UPCond(Cond);
   std::unique_ptr<ExprAST> UPThen(Then);
   return new IfExprAST(std::move(UPCond), std::move(UPThen), nullptr);
 }
 
+//===------------------------------------------------------------------------===//
+//// Cmd: For 
+////===----------------------------------------------------------------------===//
 
-
-
-
-
-
-ExprAST* HandleCmdWhile(ExprAST* Cond, ExprAST* Block) {
-  //std::unique_ptr<ExprAST> UPCond(Cond);
-  //std::unique_ptr<ExprAST> UPBlock(Block);
-  //return new WhileExprAST(std::move(UPCond), std::move(UPBlock));
+ExprAST* HandleCmdFor(ExprAST *Start, ExprAST *End, ExprAST *Step, ExprAST *Body) {
+  std::unique_ptr<ExprAST> UPStart(Start);
+  std::unique_ptr<ExprAST> UPEnd(End);
+  std::unique_ptr<ExprAST> UPStep(Step);
+  std::unique_ptr<ExprAST> UPBody(Body);
+  return new ForExprAST(std::move(UPStart), std::move(UPEnd), std::move(UPStep),
+      std::move(UPBody));
 }
 
+//===------------------------------------------------------------------------===//
+//// Cmd: While 
+////===----------------------------------------------------------------------===//
+
+ExprAST* HandleCmdWhile(ExprAST* Cond, ExprAST* Block) {
+  if(Cond->getResultingType() != BasicType::Bool) {
+    std::string ErrorMsg = "while condition is not of type Bool";
+    LogError(ErrorMsg, yylineno);
+    return nullptr; 
+  }
+  std::unique_ptr<ExprAST> UPCond(Cond);
+  std::unique_ptr<ExprAST> UPBlock(Block);
+  return new WhileExprAST(std::move(UPCond), std::move(UPBlock));
+}
+*/
+//===------------------------------------------------------------------------===//
+//// Cmd: Called 
+////===----------------------------------------------------------------------===//
+
 Expressions* HandleCmdCall() {
-  //return new Expressions();
+  return new Expressions();
 }
 
 void HandleCmdCall(Expressions *Exprs, ExprAST* Expr) {
-  //std::unique_ptr<grc::ExprAST> UPExpr(Expr);
-  //Exprs->ListOfExprs.push_back(std::move(UPExpr));
+  std::unique_ptr<grc::ExprAST> UPExpr(Expr);
+  Exprs->ListOfExprs.push_back(std::move(UPExpr));
 }
 
 CallExprAST* HandleCmdCall(const std::string &Name, Expressions *Exprs) {
-  //return new CallExprAST(Name, std::move(Exprs->ListOfExprs));
+  
+  Symbol *SubSymbol = (S->find(Name)).get();
+ 
+  if(SubSymbol->getSymbolType() == SymbolType::Procedure) {
+    ProcedureSymbol *Proc = static_cast<ProcedureSymbol*>(SubSymbol);
+    if(Exprs->ListOfExprs.size() != Proc->getSizeArgs()) {
+      std::string ErrorMsg = "invalid arguments in procedure call '" 
+        + Name + "'";
+      LogError(ErrorMsg, yylineno);
+      return nullptr;
+    }
+    for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
+      auto TArg = Proc->getTypeArg(i);
+      auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
+      if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
+        std::string ErrorMsg = "invalid arguments in procedure call '" 
+          + Name + "'";
+        LogError(ErrorMsg, yylineno);
+        return nullptr;
+      }
+    }
+  }else if(SubSymbol->getSymbolType() == SymbolType::Function) {
+    FunctionSymbol *Func = static_cast<FunctionSymbol*>(SubSymbol);
+    if(Exprs->ListOfExprs.size() != Func->getSizeArgs()) {
+      std::string ErrorMsg = "invalid arguments in function call '" 
+        + Name + "'";
+      LogError(ErrorMsg, yylineno);
+      return nullptr;
+    }
+    for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
+      auto TArg = Func->getTypeArg(i);
+      auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
+      if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
+        std::string ErrorMsg = "invalid arguments in function call '" 
+          + Name + "'";
+        LogError(ErrorMsg, yylineno);
+        return nullptr;
+      }
+    }
+  }else {
+    std::string ErrorMsg = "'" + Name + "' is not a subroutine";
+    LogError(ErrorMsg, yylineno);
+    return nullptr;
+  }
+  return new CallExprAST(Name, std::move(Exprs->ListOfExprs));
 }
+
+//===------------------------------------------------------------------------===//
+//// Cmd: Write and Read 
+////===----------------------------------------------------------------------===//
 
 Expressions* HandleCmdWrite() {
   return new Expressions();
@@ -108,54 +216,79 @@ void HandleCmdWrite(Expressions *Exprs, const std::string &String) {
 WriteExprAST* HandleCmdWrite(Expressions *Exprs) {
   return new WriteExprAST(std::move(Exprs->ListOfExprs));
 }
-
+/*
 ReadExprAST* HandleCmdRead(const std::string &Iden) {
-  std::unique_ptr<ExprAST> VExpr(new grc::VariableExprAST(Iden));
-  return new ReadExprAST(std::move(VExpr));
+  return new ReadExprAST(Iden);
 }
 
 //===------------------------------------------------------------------------===//
-//// Assign 
+//// Cmd: Assign 
 ////===----------------------------------------------------------------------===//
 
-AssignAST* HandleAssign(const std::string &Op, const std::string &Name, ExprAST* Expr) {
-  std::shared_ptr<Symbol> Sym = S->find(Name);
-  if(Sym == nullptr) {
-    LogError("error[all]: there is no variable");
-    return nullptr;
-  }else {
-    std::unique_ptr<ExprAST> UPExpr(Expr);
-    return new AssignAST(Op, Name, std::move(UPExpr));
-  }
+AssignExprAST* HandleAssign(const std::string &Op, const std::string &Name, ExprAST* Expr) {
+  //std::shared_ptr<Symbol> Sym = S->find(Name);
+  //if(Sym == nullptr) {
+  //  std::string MsgError = "variável '" + Name + "' não foi declarada no escopo corrente";
+  //  HandleError(MsgError, yylineno);
+  //  return nullptr;
+  //}else {
+  //  if(Sym->getSymbolType() != SymbolType::Variable) {
+  //    std::string MsgError = "'" + Name + "' não é uma variável para receber atribuição";
+  //    HandleError(MsgError, yylineno);
+  //    return nullptr;
+  //  } 
+  //  auto ExprBT = Expr->getResultingType();
+  //  auto TBT = Sym->getType()->getPrimitiveType()->getBasicType();
+  //  auto TAT = Sym->getType()->getArrayType();
+
+  //  if(TBT == BasicType::Int) {
+  //    if(TAT->isArray) {
+  //      TBT = BasicType::IntArray;
+  //    }
+  //  }else if(TBT == BasicType::Bool) {
+  //    if(TAT->isArray) {
+  //      TBT = BasicType::BoolArray;
+  //    }
+  //  }
+
+  //  if(ExprBT == TBT) {   
+  //    std::unique_ptr<ExprAST> UPExpr(Expr);
+  //    return new AssignAST(Op, Name, std::move(UPExpr));
+  //  }else {
+  //      std::string ErrorMsg = "o tipo da declaração e da expressão da variável '" 
+  //        + Name + "' são diferentes";
+  //      HandleError(ErrorMsg, yylineno);
+  //      return nullptr;
+  //  } 
+  //}
 }
 
-AssignAST* HandleAssign(const std::string &Name, uint8_t Op, ExprAST* Expr) {
-  std::cout << "hello\n";
-  switch(Op) {
-    case 1:
-      return HandleAssign("+=", Name, Expr);
-    case 2:
-      return HandleAssign("-=", Name, Expr);
-    case 3:
-      return HandleAssign("*=", Name, Expr);
-    case 4:
-      return HandleAssign("/=", Name, Expr);
-    default:
-      return HandleAssign("%=", Name, Expr);
-  }
-  return nullptr;
+AssignExprAST* HandleAssign(const std::string &Name, uint8_t Op, ExprAST* Expr) {
+  //switch(Op) {
+  //  case 1:
+  //    return HandleAssign("+=", Name, Expr);
+  //  case 2:
+  //    return HandleAssign("-=", Name, Expr);
+  //  case 3:
+  //    return HandleAssign("*=", Name, Expr);
+  //  case 4:
+  //    return HandleAssign("/=", Name, Expr);
+  //  default:
+  //    return HandleAssign("%=", Name, Expr);
+  //}
+  //return nullptr;
 }
 
-AssignAST* HandleAssign(uint8_t Op, const std::string &Name) {
-  ExprAST* Expr = new NumberExprAST(1);
-  if(Op == 1) { //++ -> += 1
-    return HandleAssign(Name, 1, Expr);
-  }else {       //-- -> -= 1
-    return HandleAssign(Name, 2, Expr);
-  }
-  return nullptr;
+AssignExprAST* HandleAssign(uint8_t Op, const std::string &Name) {
+  //ExprAST* Expr = new NumberExprAST(1);
+  //if(Op == 1) { //++ -> += 1
+  //  return HandleAssign(Name, 1, Expr);
+  //}else {       //-- -> -= 1
+  //  return HandleAssign(Name, 2, Expr);
+  //}
+  //return nullptr;
 }
-
+*/
 //===------------------------------------------------------------------------===//
 //// Prototype and Subroutine 
 ////===----------------------------------------------------------------------===//
@@ -196,7 +329,7 @@ void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, PrimitiveT
   }
 }
 
-SubroutineAST* HandleSubroutine(PrototypeAST* Proto, BlockExprAST* Block) {
+SubroutineAST* HandleSubroutine(PrototypeAST *Proto, BlockExprAST *Block) {
   // create and return SubroutineAST node
   std::unique_ptr<PrototypeAST> UPProto(Proto);
   std::unique_ptr<BlockExprAST> UPBlock(Block);
@@ -205,73 +338,100 @@ SubroutineAST* HandleSubroutine(PrototypeAST* Proto, BlockExprAST* Block) {
 
 PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params) {
   std::vector<std::string> Args;
-  // insert procedure in symbol table
-  std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(BasicType::Void, 0);
+  std::vector<std::shared_ptr<Type>> TArgs;
+  
+  for(int i = 0; i < Params->ListOfParams.size(); i++) {
+    auto Param = Params->ListOfParams[i].get();
+    std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Param->BT,
+        Param->Size);
+    std::shared_ptr<ArrayType> SPTArray(Param->AType);
+    std::shared_ptr<Type> SPT = 
+      std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
+    
+    TArgs.push_back(SPT);
+  }
+  std::shared_ptr<PrimitiveType> SPPT = 
+    std::make_shared<PrimitiveType>(BasicType::Void, 0);
   std::shared_ptr<ArrayType> SPTArray(new ArrayType());
   SPTArray->isArray = false;
   SPTArray->Size = 0;
-  std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
-  std::unique_ptr<ProcedureSymbol> UPProc = std::make_unique<ProcedureSymbol>(SPT);
-  
-  
-  S->insert(Name, std::move(UPProc));
-  
+  std::shared_ptr<Type> SPT = 
+    std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
+
+  std::unique_ptr<ProcedureSymbol> UPProc = 
+    std::make_unique<ProcedureSymbol>(std::move(SPT), TArgs);
+ 
+  if(!S->insert(Name, std::move(UPProc))) {
+    std::string MsgError = "'" + Name + "' function already exists in the current scope";
+    LogError(MsgError, yylineno);
+  }
   
   // start new scope
   S->initializeScope();
+  
   // insert args in symbol table
   for(int i = 0; i < Params->ListOfParams.size(); i++) {
-    std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Params->ListOfParams[i]->BT,
-        Params->ListOfParams[i]->Size);
-    std::shared_ptr<ArrayType> SPTArray(Params->ListOfParams[i]->AType);
-    std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
+    std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(
+        TArgs[i]);
     // create a variable 
-    if(!S->find(Params->ListOfParams[i]->Name)) {
-      std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPT);
-      S->insert(Params->ListOfParams[i]->Name, std::move(SPVar));
+    if(S->insert(Params->ListOfParams[i]->Name, std::move(SPVar))) {
       Args.push_back(Params->ListOfParams[i]->Name);
     }else {
-      std::string errorMsg = "error [" + std::to_string(yylineno) + "]: " + "redefinition of '" + 
-        Params->ListOfParams[i]->Name + "'";
-      HandleError(errorMsg);
+      std::string ErrorMsg = "redeclaration of '" + Params->ListOfParams[i]->Name + "'";
+      LogError(ErrorMsg, yylineno);
     }
   }
+
   // create prototypeAST node
   return new PrototypeAST(Name, Args); 
 }
 
-PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params, PrimitiveType* T) {
+PrototypeAST* HandlePrototype(const std::string &Name, 
+  Parameters* Params, PrimitiveType* T) {
   std::vector<std::string> Args;
+  std::vector<std::shared_ptr<Type>> TArgs;
+  
+  for(int i = Params->ListOfParams.size()-1; i >= 0; i--) {
+    auto Param = Params->ListOfParams[i].get();
+    std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Param->BT,
+        Param->Size);
+    std::shared_ptr<ArrayType> SPTArray(Param->AType);
+    std::shared_ptr<Type> SPT = 
+      std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
+    
+    TArgs.push_back(SPT);
+  }
+  
   std::shared_ptr<PrimitiveType> SPPT(T);
   std::shared_ptr<ArrayType> SPTArray(new ArrayType());
   SPTArray->isArray = false;
   SPTArray->Size = 0;
-  std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
-  std::unique_ptr<FunctionSymbol> UPFunc = std::make_unique<FunctionSymbol>(std::move(SPT));
-  
-  
-  S->insert(Name, std::move(UPFunc));
-  
+  std::shared_ptr<Type> SPT = 
+    std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
+  std::unique_ptr<FunctionSymbol> UPFunc = 
+    std::make_unique<FunctionSymbol>(std::move(SPT), TArgs);
+ 
+  if(!S->insert(Name, std::move(UPFunc))) {
+    std::string MsgError = "'" + Name + "' function already exists in the current scope";
+    LogError(MsgError, yylineno);
+  }
   
   // start new scope
   S->initializeScope();
+  
   // insert args in symbol table
-  for(int i = 0; i < Params->ListOfParams.size(); i++) {
-    std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Params->ListOfParams[i]->BT,
-        Params->ListOfParams[i]->Size);
-    std::shared_ptr<ArrayType> SPTArray(Params->ListOfParams[i]->AType);
-    std::shared_ptr<Type> SPT = std::make_shared<Type>(std::move(SPPT), std::move(SPTArray));
+  for(int i = Params->ListOfParams.size()-1; i >= 0; i--) {
+    std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(
+        TArgs[i]);
     // create a variable 
-    if(!S->find(Params->ListOfParams[i]->Name)) {
-      std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPT);
-      S->insert(Params->ListOfParams[i]->Name, std::move(SPVar));
+    if(S->insert(Params->ListOfParams[i]->Name, std::move(SPVar))) {
       Args.push_back(Params->ListOfParams[i]->Name);
     }else {
-      std::string errorMsg = "error [" + std::to_string(yylineno) + "]: " + "redefinition of '" + 
-        Params->ListOfParams[i]->Name + "'";
-      HandleError(errorMsg);
+      std::string ErrorMsg = "redeclaration of '" + Params->ListOfParams[i]->Name + "'";
+      LogError(ErrorMsg, yylineno);
     }
   }
+  
   // create prototypeAST node
   return new PrototypeAST(Name, Args); 
 }
@@ -289,8 +449,10 @@ Expressions* HandleCmd() {
 }
 
 void HandleCmd(Expressions *Exprs, ExprAST *Expr) {
-  std::unique_ptr<ExprAST> UPExpr(Expr);
-  Exprs->ListOfExprs.push_back(std::move(UPExpr));
+  if(Expr != nullptr) {
+    std::unique_ptr<ExprAST> UPExpr(Expr);
+    Exprs->ListOfExprs.push_back(std::move(UPExpr));
+  }
 }
 
 //===------------------------------------------------------------------------===//
@@ -298,22 +460,59 @@ void HandleCmd(Expressions *Exprs, ExprAST *Expr) {
 ////===----------------------------------------------------------------------===//
 
 VarExprAST* HandleVarCmd(Variables *Vars, PrimitiveType *T) {
-  // insert Variables in Symbol Table and generates new VarExprAST
-  std::vector<std::unique_ptr<Var>> VecVars;
+  // insert Variables in Symbol Table
+  std::vector<std::unique_ptr<AssignExprAST>> VecVars;
   std::shared_ptr<PrimitiveType> SPT(T);
-  for(int i = 0; i < Vars->ListOfVars.size(); i++) {
-    auto T = new Type(SPT, Vars->ListOfVars[i]->T);
-    std::shared_ptr<Type> SPType(T);
-    std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPType);
-    if(!S->find(Vars->ListOfVars[i]->V->getName())) {
-      S->insert(Vars->ListOfVars[i]->V->getName(), SPVar);
-      VecVars.push_back(std::move(Vars->ListOfVars[i]->V));
+  for(unsigned i = 0; i < Vars->ListOfVars.size(); i++) {
+    auto Assign = Vars->ListOfVars[i]->V.get();
+    auto Var = Assign->getVar();
+    auto Expr = Assign->getExpr();
+    if(Expr != nullptr) {
+      auto ExprBT = Expr->getResultingType();
+      auto TBT = T->getBasicType();
+
+      if(TBT == BasicType::Int) {
+        if(Vars->ListOfVars[i]->T->isArray) {
+          TBT = BasicType::IntArray;
+        }
+      }else if(TBT == BasicType::Bool) {
+        if(Vars->ListOfVars[i]->T->isArray) {
+          TBT = BasicType::BoolArray;
+        }
+      }
+
+      if(ExprBT == TBT) { //dec. type and expr. type equals
+        //config. type var i
+        auto T = new Type(SPT, Vars->ListOfVars[i]->T);
+        std::shared_ptr<Type> SPType(T);
+        std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPType);
+        //insert var i in Symbol Table
+        if(S->insert(Var->getName(), SPVar)) {
+          VecVars.push_back(std::move(Vars->ListOfVars[i]->V));
+        }else {
+          std::string ErrorMsg = "redeclaration of '" + Var->getName() + "'";
+          LogError(ErrorMsg, yylineno);
+        }
+      }else {
+        std::string ErrorMsg = "type of declaration and assignment of variable  '" 
+          + Var->getName() + "' are different";
+        LogError(ErrorMsg, yylineno);
+      }
     }else {
-      std::string errorMsg = "error [" + std::to_string(yylineno) + "]: " + "redefinition of '" + 
-        Vars->ListOfVars[i]->V->getName() + "'";
-      HandleError(errorMsg);
+      //config. type var i
+      auto T = new Type(SPT, Vars->ListOfVars[i]->T);
+      std::shared_ptr<Type> SPType(T);
+      std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPType);
+      //insert var i in Symbol Table
+      if(S->insert(Var->getName(), SPVar)) {
+        VecVars.push_back(std::move(Vars->ListOfVars[i]->V));
+      }else {
+        std::string ErrorMsg = "redeclaration of '" + Var->getName() + "'";
+        LogError(ErrorMsg, yylineno);
+      }
     }
   }
+  //// generates new VarExprAST
   return new VarExprAST(std::move(VecVars));
 }
 
@@ -329,23 +528,42 @@ void HandleListOfVar(Variables *Vars, VariableAndType *V) {
 // simple variable declarion without initialization
 VariableAndType* HandleVar(const std::string &Name) {
   // config. Variable
-  std::unique_ptr<Var> UPVar(new Var(Name, nullptr));
+  std::unique_ptr<VariableExprAST> UPVar(new VariableExprAST(Name, nullptr));
+  std::unique_ptr<AssignExprAST> UPAssign(new AssignExprAST("=", std::move(UPVar), nullptr));
   // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = false;
   SPAType->Size = 0;
   // save Variable and Type together
   auto VT = new VariableAndType();
-  VT->V = std::move(UPVar);
+  VT->V = std::move(UPAssign);
+  VT->T = std::move(SPAType);
+  return VT;
+}
+
+// array variable declarion without initialization
+VariableAndType* HandleVar(const std::string &Name, int Size) {
+  // config. Variable
+  std::unique_ptr<VariableExprAST> UPVar(new VariableExprAST(Name, nullptr));
+  std::unique_ptr<AssignExprAST> UPAssign(new AssignExprAST("=", std::move(UPVar), nullptr));
+  // config. ArrayType
+  std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
+  SPAType->isArray = true;
+  SPAType->Size = Size;
+  // save Variable and Type together
+  auto VT = new VariableAndType();
+  VT->V = std::move(UPAssign);
   VT->T = std::move(SPAType);
   return VT;
 }
 
 // simple variable declarion with initialization
-VariableAndType* HandleVar(const std::string &Name, ExprAST *Expr) {
+VariableAndType* HandleVar(const std::string Op, const std::string &Name, ExprAST *Expr) {
   std::unique_ptr<ExprAST> UPExpr(Expr);
   // config. Variable
-  std::unique_ptr<Var> UPVar(new Var(Name, std::move(UPExpr)));
+  std::unique_ptr<VariableExprAST> UPVarable(new VariableExprAST(Name, nullptr));
+  std::unique_ptr<AssignExprAST> UPVar(new AssignExprAST(Op, 
+        std::move(UPVarable), std::move(UPExpr)));
   // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = false;
@@ -357,11 +575,13 @@ VariableAndType* HandleVar(const std::string &Name, ExprAST *Expr) {
   return VT;
 }
 
-// array variable
-VariableAndType* HandleVar(const std::string &Name,  int Size, ExprAST *Expr) {
+// array variable declarion with initialization
+VariableAndType* HandleVar(const std::string &Name, int Size, ExprAST *Expr) {
   std::unique_ptr<ExprAST> UPExpr(Expr);
   // config. Variable
-  std::unique_ptr<Var> UPVar(new Var(Name, std::move(UPExpr)));
+  std::unique_ptr<VariableExprAST> UPVarable(new VariableExprAST(Name, nullptr));
+  std::unique_ptr<AssignExprAST> UPVar(new AssignExprAST("=", 
+        std::move(UPVarable), std::move(UPExpr)));
   // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = true;
@@ -378,7 +598,9 @@ VariableAndType* HandleVar(const std::string &Name, const std::string &String) {
   StringExprAST *Expr = new StringExprAST(String);
   std::unique_ptr<ExprAST> UPExpr(Expr);
   // config. Variable
-  std::unique_ptr<Var> UPVar(new Var(Name, std::move(UPExpr)));
+  std::unique_ptr<VariableExprAST> UPVariable(new VariableExprAST(Name, nullptr));
+  std::unique_ptr<AssignExprAST> UPVar(new AssignExprAST("=", 
+        std::move(UPVariable), std::move(UPExpr)));
   // config. ArrayType
   std::shared_ptr<ArrayType> SPAType = std::make_shared<ArrayType>();
   SPAType->isArray = false;
@@ -418,15 +640,15 @@ IntegersExprAST* HandleInt(Integers *Ints) {
 //// Errors 
 ////===----------------------------------------------------------------------===//
 
-void HandleError(const std::string &Msg) {
-  LogError(Msg);
-  isError = true;
-}
-
 void VerifyMain() {
-    if(!S->find("main")) {
-      HandleError("error [all]: program there is no main() function");
-    }
+  std::shared_ptr<Symbol> Main = S->find("main");
+  if(!Main) {
+    LogError("error: 'main' function not found");
+  }else {
+    if(Main->getType()->getPrimitiveType()->getBasicType() != BasicType::Int) {
+      LogError("error: 'main' function must be int type");
+    } 
+  }
 }
 
 //===------------------------------------------------------------------------===//
@@ -443,3 +665,13 @@ void HandleImportIO() {
             llvm::FunctionType::get(llvm::IntegerType::getInt32Ty(TheContext), 
             llvm::PointerType::get(llvm::Type::getInt8Ty(TheContext), 0), true));
 }
+/*
+//===------------------------------------------------------------------------===//
+//// Stop Or Skip
+////===----------------------------------------------------------------------===//
+
+StopOrSkipExprAST* HandleCmdStopOrSkip(BasicItCmd Type) {
+  std::string ErrorMsg = "faltal error: grcc does not yet support stop and skip";
+  LogError(ErrorMsg); 
+  exit(1);
+}*/

@@ -9,7 +9,7 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
-
+#include "llvm/LinkAllPasses.h"
 #include "llvm/IR/LegacyPassManagers.h"
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -24,9 +24,9 @@ constexpr unsigned int str2int(const char* str, int h = 0) {
 void grc::IROpt::populateFuncPassManager(llvm::legacy::FunctionPassManager* FPM, std::vector<std::string> PassesNames) {
   for (std::string PassName : PassesNames) {
     switch (str2int(PassName.c_str())) {
-      //case str2int("instcombine"):
-      //  FPM->add(llvm::createInstructionCombiningPass());
-      //  break;
+      case str2int("instcombine"):
+        FPM->add(llvm::createInstructionCombiningPass());
+        break;
       case str2int("simplifycfg"):
         FPM->add(llvm::createCFGSimplificationPass());
         break;
@@ -42,9 +42,9 @@ void grc::IROpt::populateFuncPassManager(llvm::legacy::FunctionPassManager* FPM,
       case str2int("dce"):
         FPM->add(llvm::createDeadCodeEliminationPass());
         break;
-//      case str2int("mem2reg"):
-//        FPM->add(llvm::createPromoteMemoryToRegisterPass());
-//        break;
+      //case str2int("mem2reg"):
+      //  FPM->add(llvm::createPromoteMemoryToRegisterPass());
+      //  break;
       case str2int("licm"):
         FPM->add(llvm::createLICMPass());
         break;
@@ -66,6 +66,9 @@ void grc::IROpt::populateFuncPassManager(llvm::legacy::FunctionPassManager* FPM,
       case str2int("loop-unroll"):
         FPM->add(llvm::createSimpleLoopUnrollPass());     // Unroll small loops
         break;
+      case str2int("adce"):
+        FPM->add(llvm::createDeadCodeEliminationPass());
+        break;
       default:
         std::cerr << "Trying to use an invalid optimization pass!\n";
         exit(1);
@@ -80,7 +83,7 @@ void grc::IROpt::optimizeIRFunction(llvm::Module *M, OptLevel Level) {
     if (!BasicPM) {
       BasicPM = std::make_unique<llvm::legacy::FunctionPassManager>(M);
       populateFuncPassManager(BasicPM.get(), 
-        {"simplifycfg", "reassociate", "gvn", "die", "dce", "licm", 
+        {"adce", "simplifycfg", "reassociate", "gvn", "die", "dce", "licm", 
         "memcpyopt", "loop-unswitch", "indvars", "loop-deletion", "loop-predication", "loop-unroll" , 
         "simplifycfg", "licm", "gvn"});
       BasicPM->doInitialization();

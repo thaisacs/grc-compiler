@@ -1,3 +1,5 @@
+//called verificar se argumento passado é array ou não
+
 parametros
   a, a[]:int;
 
@@ -16,3 +18,92 @@ Representação: While
      S.cod
      goto I
   OUT
+
+#pag. 428
+
+------------------
+ 8 bytes| 8 bytes
+------------------
+-aloca mais para fazer menos leitura
+-ambiente de ativação (estático e dinâmico)
+-ativa: pre-ordem
+-desativa: pos-ordem
+-registro de ativação
+-control lin - pc do chamador
+-acess link - registro d ativação do chamador(pode ter dados que vc precisa - escopo dinamico (escopo do chamado depende do chamador), declaração alinhada)
+
+ambiente de execução
+
+-> mem code, mem static (var globais), stack e head (duas última são estáticas)
+-> foca na pilha, pois dados locais do procedimento fica aqui (ativação e desativação)
+-> duas formas de ativação do registro de ativação
+      -estatica: tempo de compilação -> restrição (não consegue fazer recursão, não tem como determinar em tempo de execução)
+      -cada procedimento coloca na pilha o necessário
+      -registros de ativação suspensos e um deles executando
+      -q chama p, p chama l, l chama p e p chama q (pra conseguir alocar mem quando um proc é chamado e desalocar mem quando é retornado precisa de pilha)
+
+-> ACTUAL PARAMETERS: chamador deve alocar os parâmetros
+-> RETURNED VALUES: chamador que aloca
+
+-> Risc passam parâmetros por registradores (risk tem muito registradores) - reg 10 - 15 é pra parametros, então se tiver chamadas alinhadas a arquitetura que gerencia os valores de 10-15 de cada procedimento
+
+-> Coletor de Lixo: 
+
+-> nome de var, temp : endereços na ri -> vira memoria
+
+-> GERAÇÃO DE CÓDIGO
+
+1°) escolher uma máquina alvo
+
+add eax ebx -> dois endereços, por isso o livro usa 3 end (risk), ir já ta em 3 end
+add r0 r1 r2
+load r0 r1 // r0=r1
+
+-> INSTRUÇÕES 
+    -CARGA: 
+        loads (LD dst(mem ou reg = endereço), addr(reg/mem) // dst = addr)
+    -ARMAZENAMENTO
+        stores (ST X (end. mem), r (reg) // x=r)
+    -GERAIS: 
+        OP R1, R2, R3 // r1 = r2 + r3 r1 = reg, r2 e r3 = reg ou imediato
+ -> DESVIOS
+        BR L (L é end. de mem de programa)
+        BR COND (ltz, gtz, eqz) L
+-> MEMÓRIA
+        imediato, 
+        offset(reg) (endereço em reg) // offset += value guardado em reg
+
+LD R1, 0(R2)
+LD R1, *R2 *R2 valor de R2 dentro de R1        
+endereço dentro de R2 -> 0(R2)
+
+exemplo:
+
+t0 = a + b
+
+ld r0, a
+ld r1, b
+add r2, r0, r1 //r1 é um reg virtual, pode ser que tenha que ter ido pra memória
+st t0, r2
+
+t0 = a + b
+d = t0 + c
+
+ld r0, a
+ld r1, b
+add r2, r0, r1 //r1 é um reg virtual, pode ser que tenha que ter ido pra memória
+st t0, r2
+ld r3, c
+ld r4, t0
+add r5, r3, r4
+st d, r5
+
+emissção por padrão, cada codigo vira um conjunto de instruções
+
+ld r0, a
+ld r1, b
+add r0, r0, r1 //r1 é um reg virtual, pode ser que tenha que ter ido pra memória
+st t0, r0
+ld r1, c
+add r0, r1, r0
+st d, r0

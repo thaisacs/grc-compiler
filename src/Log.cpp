@@ -13,15 +13,3 @@ void Log::scopes(std::shared_ptr<Scope> S) {
   S->toPrint(File);
   File.close();
 }
-
-void Log::subroutine(SubroutineAST *Proc) {
-  File.open(FileName, std::ofstream::app);
-  Proc->toPrint(File);
-  File.close();
-}
-
-void Log::variable(VarExprAST *Vars) {
-  File.open(FileName, std::ofstream::app);
-  Vars->toPrint(File);
-  File.close();
-}

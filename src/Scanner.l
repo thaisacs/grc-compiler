@@ -20,7 +20,6 @@ string     "\"".*"\""
 "*" |
 "/" |
 "%" |
-"?" |
 ":" |
 "{" |
 "}" |
@@ -49,9 +48,10 @@ string     "\"".*"\""
 "/=" { yylval.F = 4; return ASSIGN; }
 "%=" { yylval.F = 5; return ASSIGN; }
 
-"&&" { return AND; }
-"||" { return OR;  }
-"!"  { return NOT; }
+"&&" { return AND;   }
+"||" { return OR;    }
+"!"  { return NOT;   }
+"?"  { return QUEST; }
 
 "int"    { return TYPE_INT;    }
 "bool"   { return TYPE_BOOL;   }
@@ -77,11 +77,11 @@ string     "\"".*"\""
                std::strcpy(yylval.S, yytext);
                return IDENTIFIER; }
 
-{number}     { yylval.N = atoi(yytext); return NUMBER;  }
+{number} { yylval.N = atoi(yytext); return NUMBER; }
 
-{string}     { yylval.S = new char[std::strlen(yytext)]; 
-               std::strcpy(yylval.S, yytext);
-               return WORD;}
+{string} { yylval.S = new char[std::strlen(yytext)]; 
+           std::strcpy(yylval.S, yytext);
+           return WORD; }
 
 {comment}    { yylineno++; }
 {linefeed}   { yylineno++; }
