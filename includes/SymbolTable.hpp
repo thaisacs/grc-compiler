@@ -51,11 +51,13 @@ namespace grc {
  
   class VariableSymbol : public Symbol {
     std::shared_ptr<Type> T;
+    bool Argument; 
   public:
-    VariableSymbol(std::shared_ptr<Type> T) : T(T) {}
+    VariableSymbol(std::shared_ptr<Type> T, bool Argument) : T(T), Argument(Argument) {}
     std::shared_ptr<Type> getType() override;
     SymbolType getSymbolType() override;
     void toPrint(std::ofstream&) override;
+    bool getArgument() { return Argument; }
   };
 
   class ProcedureSymbol : public Symbol {

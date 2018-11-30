@@ -75,6 +75,41 @@ static llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function *TheFunction,
   } 
 }
 
+static llvm::AllocaInst* CreateEntryBlockAllocaArgs(llvm::Function *TheFunction,
+    const std::string &VarName) {
+  std::shared_ptr<Type> T = S->find(VarName)->getType();
+  auto AType = T->getArrayType();
+  auto PType = T->getPrimitiveType();
+  
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), 
+          TheFunction->getEntryBlock().begin());
+
+  switch(PType->getBasicType()) {
+    case BasicType::Int:
+      if(AType->isArray) {
+        return TmpB.CreateAlloca(llvm::Type::getInt32PtrTy(TheContext), 0, 
+          VarName.c_str());
+      }else {
+        return TmpB.CreateAlloca(llvm::Type::getInt32Ty(TheContext), 0, 
+          VarName.c_str());
+      }
+      break;
+    case BasicType::Bool:
+      if(AType->isArray) {
+        return TmpB.CreateAlloca(llvm::Type::getInt1PtrTy(TheContext), 0, 
+          VarName.c_str());
+      }else {
+        return TmpB.CreateAlloca(llvm::Type::getInt1Ty(TheContext), 0, 
+          VarName.c_str());
+      }
+     break;
+    case BasicType::String:
+      return TmpB.CreateAlloca(llvm::Type::getInt8PtrTy(TheContext), 0, 
+          VarName.c_str());
+      break;
+  } 
+}
+
 llvm::GlobalVariable* AllocaGlobal(std::string Name) {
   TheModule->getOrInsertGlobal(Name, Builder.getInt32Ty());
   llvm::GlobalVariable *gVar = TheModule->getNamedGlobal(Name);
@@ -156,50 +191,66 @@ BasicType StringExprAST::getResultingType() {
 ////===----------------------------------------------------------------------===//
 
 llvm::Value* VariableExprAST::codegen() {
-  // Look this variable up in the function.
-  std::shared_ptr<Symbol> VarSymbol = S->find(Name);
-  if(VarSymbol) {
-    if(VarSymbol->getType()->getPrimitiveType()->getBasicType() ==
-        BasicType::String) {
-      llvm::Value *V = NamedValues[Name];
-      llvm::Type *Ty = llvm::IntegerType::getInt8Ty(TheContext);
-      llvm::Type *TA = llvm::ArrayType::get(Ty, 
-          VarSymbol->getType()->getPrimitiveType()->getSize() + 1);
-      return Builder.CreateConstGEP2_32(TA, V, 0, 0);
-    }
-  } 
+  std::shared_ptr<Symbol> Symb = S->find(Name);
+  auto VarSymbol = static_cast<VariableSymbol*> (Symb.get());
   
-  if(!VarSymbol->getType()->getArrayType()->isArray) {
-    llvm::Value *V = NamedValues[Name];
-    if (!V)
-      return nullptr;
+  if(!VarSymbol)
+   return nullptr; 
+ 
+  auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
+  
+  llvm::Value *VarValue = NamedValues[Name];
+  
+  if (!VarValue)
+    return nullptr;
+
+  if(!VarSymbol->getType()->getArrayType()->isArray && VarBType != BasicType::String) {
     // Load the value.
-    return Builder.CreateLoad(V, Name.c_str());
+    return Builder.CreateLoad(VarValue, Name.c_str());
   }else {
-    llvm::Value *V = NamedValues[Name];
-    llvm::Value *I = Index->codegen();
-    llvm::Value *VI, *PtrVec; 
-    llvm::Type *Ty, *TA;
-    std::shared_ptr<Symbol> VarSymbol = S->find(Name);
-    if(VarSymbol) {
-      switch(VarSymbol->getType()->getPrimitiveType()->getBasicType()) {
+    if(VarSymbol->getArgument()) {
+      switch(VarBType) {
+        case BasicType::String:
+          return Builder.CreateLoad(VarValue, Name.c_str());
+        case BasicType::Int:
+        case BasicType::Bool:
+          llvm::Value *Element = Builder.CreateLoad(VarValue, Name.c_str());
+          llvm::Value *I = Index->codegen();
+          llvm::Value *Num = Builder.CreateGEP(Element, I);
+        return Builder.CreateLoad(Num, Name.c_str());
+      }
+    }else {
+      llvm::Type *Ty, *TA;
+      llvm::Value *Num, *I, *PtrArray;
+      switch(VarBType) {
+        case BasicType::String:
+          Ty = llvm::IntegerType::getInt8Ty(TheContext);
+          TA = llvm::ArrayType::get(Ty, 
+              VarSymbol->getType()->getPrimitiveType()->getSize() + 1);
+          return Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
         case BasicType::Int:
           Ty = llvm::IntegerType::getInt32Ty(TheContext);
           TA = llvm::ArrayType::get(Ty, VarSymbol->getType()->getArrayType()->Size);
-          PtrVec = Builder.CreateConstGEP2_32(TA, V, 0, 0);
-          VI = Builder.CreateGEP(PtrVec, I);
-          break;
+          if(!Index) {
+            return Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
+          }else {
+            I = Index->codegen();
+            PtrArray = Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
+            Num = Builder.CreateGEP(PtrArray, I);
+            return Builder.CreateLoad(Num, Name.c_str());
+          }
         case BasicType::Bool:
           Ty = llvm::IntegerType::getInt1Ty(TheContext);
           TA = llvm::ArrayType::get(Ty, VarSymbol->getType()->getArrayType()->Size);
-          PtrVec = Builder.CreateConstGEP2_32(TA, V, 0, 0);
-          VI = Builder.CreateGEP(PtrVec, I);
-          break;
+          if(!Index) {
+            return Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
+          }else {
+            I = Index->codegen();
+            PtrArray = Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
+            Num = Builder.CreateGEP(PtrArray, I);
+            return Builder.CreateLoad(Num, Name.c_str());
+          }
       }
-      if(!VI)
-        return nullptr;
-      // Load the value.
-      return Builder.CreateLoad(VI, Name.c_str());
     }
   }
 }
@@ -229,8 +280,9 @@ BasicType VariableExprAST::getResultingType() {
     }
   }
 
-  std::string MsgError = "variável '" + Name + "' não foi declarada no escopo corrente";
+  std::string MsgError = "variable '" + Name + "' was not declared";
   LogError(MsgError, yylineno);
+  
   return BasicType::Undefined;
 }
 
@@ -241,8 +293,9 @@ BasicType VariableExprAST::getResultingType() {
 llvm::Value* UnaryExprAST::codegen() {
   llvm::Value *R = Operand->codegen();
   if(Op == "!") {
+    return Builder.CreateNot(R, "tmpNot");
   }else {
-    return Builder.CreateNeg(R, "tmpnot");
+    return Builder.CreateNeg(R, "tmpNeg");
   }
   return nullptr;
 }
@@ -646,7 +699,7 @@ llvm::Value* VarExprAST::codegen() {
 }
 
 BasicType VarExprAST::getResultingType() {
-  //return BasicType::Undefined;
+  return BasicType::Undefined;
 }
 
 //===------------------------------------------------------------------------===//
@@ -669,7 +722,7 @@ llvm::Value* WriteExprAST::codegen() {
 }
 
 BasicType WriteExprAST::getResultingType() {
-  //return BasicType::Undefined;
+  return BasicType::Undefined;
 }
 
 //===------------------------------------------------------------------------===//
@@ -677,29 +730,53 @@ BasicType WriteExprAST::getResultingType() {
 ////===----------------------------------------------------------------------===//
 
 llvm::Value* ReadExprAST::codegen() {
-  //std::vector<llvm::Value*> ArgsV;
-  //llvm::Function* readFunc = TheModule->getFunction("scanf");
-  //llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
-  //if(readFunc) {
-  //  llvm::Value *formatStr = Builder.CreateGlobalStringPtr("%d");
-  //  ArgsV.push_back(formatStr);
-  //  if(Index == -1) {
-  //    ArgsV.push_back(NamedValues[Name]);
-  //  }else {
-  //    llvm::Value *V = NamedValues[Name];
-  //    llvm::Value *I = llvm::ConstantInt::get(TheContext, llvm::APInt(32, Index));
-  //    llvm::Value *VI = Builder.CreateGEP(V, I);
-  //    ArgsV.push_back(VI);
-  //  }
-  //  Builder.CreateCall(readFunc, ArgsV, "retRead");
-  //}else {
-  //  LogError("error[all]: função read não foi encontrada. Você deve importar a biblioteca io.");
-  //  return nullptr;
-  //}
+  std::vector<llvm::Value*> ArgsV;
+  llvm::Function* readFunc = TheModule->getFunction("scanf");
+  llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+  if(readFunc) {
+    // Load the value.
+    llvm::Value *formatStr = Builder.CreateGlobalStringPtr("%d");
+    ArgsV.push_back(formatStr);
+  
+    std::shared_ptr<Symbol> Symb = S->find(Name);
+    auto VarSymbol = static_cast<VariableSymbol*> (Symb.get());
+  
+    if(!VarSymbol)
+      return nullptr; 
+ 
+    auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
+  
+    llvm::Value *VarValue = NamedValues[Name];
+  
+    if (!VarValue)
+      return nullptr;
+
+    if(!VarSymbol->getType()->getArrayType()->isArray) {
+      ArgsV.push_back(VarValue);
+    }else {
+      if(VarSymbol->getArgument()) {
+        llvm::Value *Element = Builder.CreateLoad(VarValue, Name.c_str());
+        llvm::Value *I = Index->codegen();
+        llvm::Value *Num = Builder.CreateGEP(Element, I);
+        ArgsV.push_back(Num);
+      }else {
+        llvm::Value *I = Index->codegen();
+        llvm::Type *Ty = llvm::IntegerType::getInt32Ty(TheContext);
+        llvm::Type *TA = llvm::ArrayType::get(Ty, VarSymbol->getType()->getArrayType()->Size);
+        llvm::Value *PtrArray = Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
+        llvm::Value *Num = Builder.CreateGEP(PtrArray, I);
+        ArgsV.push_back(Num);
+      }
+    }
+    Builder.CreateCall(readFunc, ArgsV, "retRead");
+  }else {
+    LogError("error[all]: 'read' was not defined. You must import io library. Use 'import io'.");
+    return nullptr;
+  }
 }
 
 BasicType ReadExprAST::getResultingType() {
-  //return BasicType::Undefined;
+  return BasicType::Undefined;
 }
 
 //===------------------------------------------------------------------------===//
@@ -727,10 +804,10 @@ llvm::Value* CallExprAST::codegen() {
   std::vector<llvm::Value *> ArgsV;
   llvm::Function *CalleeF = TheModule->getFunction(Callee);
   for (unsigned i = 0, e = Args.size(); i != e; ++i) {
-      ArgsV.push_back(Args[i]->codegen());
-        if (!ArgsV.back())
-          return nullptr;
-        }
+    ArgsV.push_back(Args[i]->codegen());
+    if (!ArgsV.back())
+      return nullptr;
+  }
   return Builder.CreateCall(CalleeF, ArgsV, "calltmp");  
 }
 
@@ -764,23 +841,17 @@ llvm::Value* BlockExprAST::codegen() {
 }
 
 BasicType BlockExprAST::getResultingType() {
-  //return BasicType::Undefined;
+  return BasicType::Undefined;
 }
 
 //===------------------------------------------------------------------------===//
 //// StopOrSkipExprAST
 ////===----------------------------------------------------------------------===//
 
-llvm::Value* StopOrSkipExprAST::codegen() {
-  //llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
-  //
-  //if(Cmd == BasicItCmd::Skip) {
-  //}else {
-  //}
-}
+llvm::Value* StopOrSkipExprAST::codegen() {}
 
 BasicType StopOrSkipExprAST::getResultingType() {
-  //return BasicType::Undefined;
+  return BasicType::Undefined;
 }
 
 //===------------------------------------------------------------------------===//
@@ -795,7 +866,6 @@ void PrototypeAST::print() {
 }
 
 llvm::Function* PrototypeAST::codegen() {
-
   std::vector<llvm::Type*> ArgsVector;
   llvm::FunctionType *FT;
 
@@ -820,6 +890,7 @@ llvm::Function* PrototypeAST::codegen() {
         }
         break;
       case BasicType::String:
+          ArgsVector.push_back(llvm::Type::getInt8PtrTy(TheContext));
         break;
       default: 
         ArgsVector.push_back(llvm::Type::getVoidTy(TheContext));
@@ -846,7 +917,7 @@ llvm::Function* PrototypeAST::codegen() {
 
   unsigned Idx = 0;
   for(auto &Arg : F->args()) {
-    Arg.setName(Args[Idx]);
+    Arg.setName(Args[Args.size() - Idx - 1]);
     Idx++;
   }
 
@@ -866,20 +937,20 @@ llvm::Function* SubroutineAST::codegen() {
   
   if(!TheFunction)
     return nullptr;
-
+  
   llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
   Builder.SetInsertPoint(BB);
-
   NamedValues.clear();
+  
   for(auto &Arg : TheFunction->args()) {
     //Create an alloca for this variable.
-    llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, Arg.getName());
+    llvm::AllocaInst *AllocaArgs = CreateEntryBlockAllocaArgs(TheFunction, Arg.getName());
     //Store the initial value into the alloca.
-    Builder.CreateStore(&Arg, Alloca);
+    Builder.CreateStore(&Arg, AllocaArgs);
     //Add arguments to variable symbol table.
-    NamedValues[Arg.getName()] = Alloca;
+    NamedValues[Arg.getName()] = AllocaArgs;
   }
-
+  
   if (llvm::Value *RetVal = Body->codegen()) {
     //Finish off the function.
     Builder.CreateRetVoid();
@@ -888,7 +959,7 @@ llvm::Function* SubroutineAST::codegen() {
     // Run the optimizer on the function.
     return TheFunction;
   }
-
+  
   // Error reading body, remove function.
   TheFunction->eraseFromParent();
   return nullptr;

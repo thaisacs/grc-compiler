@@ -14,7 +14,6 @@
 #include <fstream>
 #include <tuple>
 
-
 namespace grc {
   enum BasicItCmd { Skip, Stop };
   
@@ -80,9 +79,11 @@ namespace grc {
   };
 
   class ReadExprAST: public ExprAST {
-    std::string Var;
+    std::string Name;
+    std::unique_ptr<ExprAST> Index;
   public:
-    ReadExprAST(std::string Var) : Var(std::move(Var)) {}
+    ReadExprAST(const std::string &Name, std::unique_ptr<ExprAST> Index) : 
+      Name(Name), Index(std::move(Index)) {}
     llvm::Value* codegen() override;
     BasicType getResultingType();
   };

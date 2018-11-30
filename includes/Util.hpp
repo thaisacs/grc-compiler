@@ -97,6 +97,7 @@ void HandleCmdWrite(Expressions*, grc::ExprAST*);
 void HandleCmdWrite(Expressions*, const std::string&); 
 grc::WriteExprAST* HandleCmdWrite(Expressions*); 
 grc::ReadExprAST* HandleCmdRead(const std::string&); 
+grc::ReadExprAST* HandleCmdRead(const std::string&, grc::ExprAST*); 
 
 //===------------------------------------------------------------------------===//
 //// Prototype and Subroutine
@@ -109,9 +110,10 @@ Parameters* HandleParameters();
 void HandleParameters(Parameters*, Parameter*);
 grc::PrimitiveType* HandleType(grc::BasicType, int); 
 Parameters* HandleListOfParams();
-void HandleListOfParams(Parameters*, Parameters*, grc::PrimitiveType*); 
+void HandleListOfParams(Parameters*, Parameters*);
+void HandleListOfParams(Parameters*, grc::PrimitiveType*);
 grc::SubroutineAST* HandleSubroutine(grc::PrototypeAST*, grc::BlockExprAST*); 
-
+//void HandleListOfParams(Parameters*, Parameters*, grc::PrimitiveType*); 
 
 //===------------------------------------------------------------------------===//
 //// Block 

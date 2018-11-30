@@ -76,7 +76,7 @@
 %nonassoc NOT UMINUS
 
 %type <Expr> cmds writeCmdH writeCmdB listOfCallValH listOfCallValB
-%type <PS> parametersH parametersB listOfParamB listOfParamH
+%type <PS> parametersH parametersB listOfParamB listOfParamH listOfParamT listOfParams
 %type <P> parameter
 %type <PT> prototype
 %type <VE> varCmd 
@@ -84,7 +84,8 @@
 %type <VS> listOfVarH listOfVarB
 %type <LB> listOfBoolH listOfBoolB 
 %type <LI> listOfIntH listOfIntB
-%type <E> exp boolExp intExp arrayInitVar expAssign cmd simpleCmd writeCmd callSub returnCmd/* readCmd  */
+%type <E> exp boolExp intExp arrayInitVar expAssign cmd simpleCmd writeCmd 
+          callSub returnCmd readCmd 
           /*stopCmd ifCmd  whileCmd skipCmd */
 %type <V> simpleVar simpleInitVar arrayVar
 %type <PMT> type
@@ -111,8 +112,8 @@ type: TYPE_INT                   { $$ = HandleType(grc::BasicType::Int, 0);     
     | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::BasicType::String, $3); }
     ;
 
-prototype: DEF IDENTIFIER '(' listOfParamH ')'          { $$ = HandlePrototype($2, $4);     }
-         | DEF IDENTIFIER '(' listOfParamH ')' ':' type { $$ = HandlePrototype($2, $4, $7); }
+prototype: DEF IDENTIFIER '(' listOfParams ')'          { $$ = HandlePrototype($2, $4);     }
+         | DEF IDENTIFIER '(' listOfParams ')' ':' type { $$ = HandlePrototype($2, $4, $7); }
          ; 
 
 decSub: prototype block { if($1 && $2) {
@@ -129,19 +130,24 @@ decSub: prototype block { if($1 && $2) {
                         }
       ;
 
-listOfParamH: /*empty*/                         { $$ = HandleListOfParams();               }
-            | listOfParamB parametersH ':' type { HandleListOfParams($1, $2, $4); $$ = $1; }
+listOfParams: /*empty*/    { $$ = HandleListOfParams(); }
+            | listOfParamH { /*default*/ }
+
+listOfParamH: listOfParamB listOfParamT { HandleListOfParams($1, $2); $$ = $1; }
+            ;
+
+listOfParamT: parametersH ':' type { HandleListOfParams($1, $3); $$ = $1; }
             ;
 
 listOfParamB: /*empty*/      { $$ = HandleListOfParams(); } 
           | listOfParamH ';' { $$ = $1;                   }
           ;
 
-parametersH: parametersB parameter { HandleParameters($1, $2); $$ = $1; }
+parametersH: parameter parametersB { HandleParameters($2, $1); $$ = $2; }
            ;
 
 parametersB: /*empty*/       { $$ = HandleParameters(); }
-           | parametersH ',' { /*default*/              }
+           | ',' parametersH { $$ = $2;              }
            ;
 
 parameter: IDENTIFIER         { $$ = HandleParameter($1, false); }
@@ -162,8 +168,8 @@ simpleCmd: varCmd     { /*default*/    }
          | writeCmd   { /*default*/    }
          | returnCmd  { /*default*/    }
          | callSubCmd { /*default*/    }
-/*       | readCmd    { /*default*    }
-         | ifCmd      { /*default*    }
+         | readCmd    { /*default*/    }
+/*       | ifCmd      { /*default*    }
          | whileCmd   { /*default*    }
          | stopCmd    { /*default*    }
          | skipCmd    { /*default*    }
@@ -204,11 +210,11 @@ expAssign: exp        { /*default*/ }
          | callSub    { /*default*/ }
 /*       | ternaryCmd { /*default* }*/
          ;
-/*
-readCmd: READ IDENTIFIER ';'                { $$ = HandleCmdRead($2); }
-/*     | READ IDENTIFIER '[' NUMBER ']' ';' { $$ = HandleCmdRead($2, $4); }*
+
+readCmd: READ IDENTIFIER ';'                { $$ = HandleCmdRead($2);     }
+       | READ IDENTIFIER '[' exp ']' ';' { $$ = HandleCmdRead($2, $4); }
        ;
-*/
+
 writeCmd: WRITE writeCmdH ';' { $$ = HandleCmdWrite($2); }
         ;
 

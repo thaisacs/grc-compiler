@@ -147,50 +147,49 @@ void HandleCmdCall(Expressions *Exprs, ExprAST* Expr) {
 }
 
 CallExprAST* HandleCmdCall(const std::string &Name, Expressions *Exprs) {
-  
   Symbol *SubSymbol = (S->find(Name)).get();
  
-  if(SubSymbol->getSymbolType() == SymbolType::Procedure) {
-    ProcedureSymbol *Proc = static_cast<ProcedureSymbol*>(SubSymbol);
-    if(Exprs->ListOfExprs.size() != Proc->getSizeArgs()) {
-      std::string ErrorMsg = "invalid arguments in procedure call '" 
-        + Name + "'";
-      LogError(ErrorMsg, yylineno);
-      return nullptr;
-    }
-    for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
-      auto TArg = Proc->getTypeArg(i);
-      auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
-      if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
-        std::string ErrorMsg = "invalid arguments in procedure call '" 
-          + Name + "'";
-        LogError(ErrorMsg, yylineno);
-        return nullptr;
-      }
-    }
-  }else if(SubSymbol->getSymbolType() == SymbolType::Function) {
-    FunctionSymbol *Func = static_cast<FunctionSymbol*>(SubSymbol);
-    if(Exprs->ListOfExprs.size() != Func->getSizeArgs()) {
-      std::string ErrorMsg = "invalid arguments in function call '" 
-        + Name + "'";
-      LogError(ErrorMsg, yylineno);
-      return nullptr;
-    }
-    for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
-      auto TArg = Func->getTypeArg(i);
-      auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
-      if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
-        std::string ErrorMsg = "invalid arguments in function call '" 
-          + Name + "'";
-        LogError(ErrorMsg, yylineno);
-        return nullptr;
-      }
-    }
-  }else {
-    std::string ErrorMsg = "'" + Name + "' is not a subroutine";
-    LogError(ErrorMsg, yylineno);
-    return nullptr;
-  }
+  //if(SubSymbol->getSymbolType() == SymbolType::Procedure) {
+  //  ProcedureSymbol *Proc = static_cast<ProcedureSymbol*>(SubSymbol);
+  //  if(Exprs->ListOfExprs.size() != Proc->getSizeArgs()) {
+  //    std::string ErrorMsg = "invalid arguments in procedure call '" 
+  //      + Name + "'";
+  //    LogError(ErrorMsg, yylineno);
+  //    return nullptr;
+  //  }
+  //  for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
+  //    auto TArg = Proc->getTypeArg(i);
+  //    auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
+  //    if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
+  //      std::string ErrorMsg = "invalid arguments in procedure call '" 
+  //        + Name + "'";
+  //      LogError(ErrorMsg, yylineno);
+  //      return nullptr;
+  //    }
+  //  }
+  //}else if(SubSymbol->getSymbolType() == SymbolType::Function) {
+  //  FunctionSymbol *Func = static_cast<FunctionSymbol*>(SubSymbol);
+  //  if(Exprs->ListOfExprs.size() != Func->getSizeArgs()) {
+  //    std::string ErrorMsg = "invalid arguments in function call '" 
+  //      + Name + "'";
+  //    LogError(ErrorMsg, yylineno);
+  //    return nullptr;
+  //  }
+  //  for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
+  //    auto TArg = Func->getTypeArg(i);
+  //    auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
+  //    if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
+  //      std::string ErrorMsg = "invalid arguments in function call '" 
+  //        + Name + "'";
+  //      LogError(ErrorMsg, yylineno);
+  //      return nullptr;
+  //    }
+  //  }
+  //}else {
+  //  std::string ErrorMsg = "'" + Name + "' is not a subroutine";
+  //  LogError(ErrorMsg, yylineno);
+  //  return nullptr;
+  //}
   return new CallExprAST(Name, std::move(Exprs->ListOfExprs));
 }
 
@@ -216,15 +215,21 @@ void HandleCmdWrite(Expressions *Exprs, const std::string &String) {
 WriteExprAST* HandleCmdWrite(Expressions *Exprs) {
   return new WriteExprAST(std::move(Exprs->ListOfExprs));
 }
-/*
+
 ReadExprAST* HandleCmdRead(const std::string &Iden) {
-  return new ReadExprAST(Iden);
+  std::unique_ptr<ExprAST> UPExpr(nullptr);
+  return new ReadExprAST(Iden, std::move(UPExpr));
 }
+
+ReadExprAST* HandleCmdRead(const std::string &Iden, grc::ExprAST *Expr) {
+  std::unique_ptr<ExprAST> UPExpr(Expr);
+  return new ReadExprAST(Iden, std::move(UPExpr));
+} 
 
 //===------------------------------------------------------------------------===//
 //// Cmd: Assign 
 ////===----------------------------------------------------------------------===//
-
+/*
 AssignExprAST* HandleAssign(const std::string &Op, const std::string &Name, ExprAST* Expr) {
   //std::shared_ptr<Symbol> Sym = S->find(Name);
   //if(Sym == nullptr) {
@@ -315,13 +320,7 @@ Parameters* HandleListOfParams() {
   return new Parameters();
 }
 
-void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, PrimitiveType *T) {
-  for(int i = 0; i < ParamsOld->ListOfParams.size(); i++) {
-    ParamsOld->ListOfParams[i]->BT = T->getBasicType();
-    ParamsOld->ListOfParams[i]->Size = T->getSize();
-    if(T->getBasicType() == BasicType::String && T->getSize() == 0)
-      ParamsOld->ListOfParams[i]->Size = 256;
-  }
+void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld) {
   while(ParamsOld->ListOfParams.size() > 0) {
     int N = ParamsOld->ListOfParams.size() - 1;
     ParamsNew->ListOfParams.push_back(std::move(ParamsOld->ListOfParams[N]));
@@ -329,6 +328,40 @@ void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, PrimitiveT
   }
 }
 
+void HandleListOfParams(Parameters *Params, PrimitiveType *T) {
+  for(int i = 0; i < Params->ListOfParams.size(); i++) {
+    std::cout << Params->ListOfParams[i]->Name << std::endl;
+    Params->ListOfParams[i]->BT = T->getBasicType();
+    Params->ListOfParams[i]->Size = T->getSize();
+    //if(T->getBasicType() == BasicType::String && T->getSize() == 0)
+    //  ParamsOld->ListOfParams[i]->Size = 255;
+  }
+}
+/*
+void HandleListOfParams(Parameters *ParamsNew, Parameters *ParamsOld, PrimitiveType *T) {
+  if(T->getBasicType() == BasicType::Bool)
+    std::cout << "Bool\n";
+  if(T->getBasicType() == BasicType::Int)
+    std::cout << "Int\n";
+  if(T->getBasicType() == BasicType::String)
+    std::cout << "String\n";
+  std::cout << ParamsNew->ListOfParams.size() << " " << ParamsOld->ListOfParams.size() << "\n"; 
+  for(int i = 0; i < ParamsOld->ListOfParams.size(); i++) {
+    if(ParamsOld->ListOfParams[i]->BT == BasicType::Void) {
+      std::cout << ParamsOld->ListOfParams[i]->Name << std::endl;
+      ParamsOld->ListOfParams[i]->BT = T->getBasicType();
+      ParamsOld->ListOfParams[i]->Size = T->getSize();
+    }
+    //if(T->getBasicType() == BasicType::String && T->getSize() == 0)
+    //  ParamsOld->ListOfParams[i]->Size = 256;
+  }
+  while(ParamsOld->ListOfParams.size() > 0) {
+    int N = ParamsOld->ListOfParams.size() - 1;
+    ParamsNew->ListOfParams.push_back(std::move(ParamsOld->ListOfParams[N]));
+    ParamsOld->ListOfParams.pop_back();
+  }
+}
+*/
 SubroutineAST* HandleSubroutine(PrototypeAST *Proto, BlockExprAST *Block) {
   // create and return SubroutineAST node
   std::unique_ptr<PrototypeAST> UPProto(Proto);
@@ -371,8 +404,7 @@ PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params) {
   
   // insert args in symbol table
   for(int i = 0; i < Params->ListOfParams.size(); i++) {
-    std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(
-        TArgs[i]);
+    std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(TArgs[i], true);
     // create a variable 
     if(S->insert(Params->ListOfParams[i]->Name, std::move(SPVar))) {
       Args.push_back(Params->ListOfParams[i]->Name);
@@ -386,12 +418,11 @@ PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params) {
   return new PrototypeAST(Name, Args); 
 }
 
-PrototypeAST* HandlePrototype(const std::string &Name, 
-  Parameters* Params, PrimitiveType* T) {
+PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params, PrimitiveType* T) {
   std::vector<std::string> Args;
   std::vector<std::shared_ptr<Type>> TArgs;
   
-  for(int i = Params->ListOfParams.size()-1; i >= 0; i--) {
+  for(int i = 0; i < Params->ListOfParams.size(); ++i) {
     auto Param = Params->ListOfParams[i].get();
     std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Param->BT,
         Param->Size);
@@ -421,8 +452,7 @@ PrototypeAST* HandlePrototype(const std::string &Name,
   
   // insert args in symbol table
   for(int i = Params->ListOfParams.size()-1; i >= 0; i--) {
-    std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(
-        TArgs[i]);
+    std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(TArgs[i], true);
     // create a variable 
     if(S->insert(Params->ListOfParams[i]->Name, std::move(SPVar))) {
       Args.push_back(Params->ListOfParams[i]->Name);
@@ -485,7 +515,7 @@ VarExprAST* HandleVarCmd(Variables *Vars, PrimitiveType *T) {
         //config. type var i
         auto T = new Type(SPT, Vars->ListOfVars[i]->T);
         std::shared_ptr<Type> SPType(T);
-        std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPType);
+        std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPType, false);
         //insert var i in Symbol Table
         if(S->insert(Var->getName(), SPVar)) {
           VecVars.push_back(std::move(Vars->ListOfVars[i]->V));
@@ -502,7 +532,7 @@ VarExprAST* HandleVarCmd(Variables *Vars, PrimitiveType *T) {
       //config. type var i
       auto T = new Type(SPT, Vars->ListOfVars[i]->T);
       std::shared_ptr<Type> SPType(T);
-      std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPType);
+      std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(SPType, false);
       //insert var i in Symbol Table
       if(S->insert(Var->getName(), SPVar)) {
         VecVars.push_back(std::move(Vars->ListOfVars[i]->V));

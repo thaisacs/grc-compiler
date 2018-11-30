@@ -1,12 +1,13 @@
 import io
 
-def teste(a[] : int) : int {
-  
+def teste(b[] : int) : int {
+  read b[4]; 
   return 0;
 }
 
 def main() : int {
-  var a[4] = {5,5,3,4,9} : int;
-  teste(a);
+  var a = 5, b[5] = {4, 5, 6, 7, 8} : int;
+  teste(b);
+  write "%d", b[4]; 
   return 0;
 }
