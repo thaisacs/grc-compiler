@@ -46,6 +46,7 @@
   grc::PrimitiveType *PMT;
   grc::BlockExprAST *B;
   grc::PrototypeAST *PT;
+  grc::VariableExprAST *VAR;
   VariableAndType *V;
   Variables *VS; 
   Booleans *LB;
@@ -85,11 +86,12 @@
 %type <LB> listOfBoolH listOfBoolB 
 %type <LI> listOfIntH listOfIntB
 %type <E> exp boolExp intExp arrayInitVar expAssign cmd simpleCmd writeCmd 
-          callSub returnCmd readCmd 
-          /*stopCmd ifCmd  whileCmd skipCmd */
+          callSub returnCmd readCmd assign assignInit ifCmd  whileCmd forCmd 
+          /*stopCmd skipCmd */
 %type <V> simpleVar simpleInitVar arrayVar
 %type <PMT> type
-%type <B> block /*bodyH*/
+%type <B> block bodyH
+%type <VAR> variable
 
 %%
 
@@ -169,49 +171,51 @@ simpleCmd: varCmd     { /*default*/    }
          | returnCmd  { /*default*/    }
          | callSubCmd { /*default*/    }
          | readCmd    { /*default*/    }
-/*       | ifCmd      { /*default*    }
-         | whileCmd   { /*default*    }
-         | stopCmd    { /*default*    }
-         | skipCmd    { /*default*    }
-         | assignCmd  { /*default*    }
-         | forCmd     { /*default    }*/
+         | assignCmd  { /*default*/    }
+         | ifCmd      { /*default*/    }
+         | whileCmd   { /*default*/    }
+         | forCmd     { /*default*/    }
+/*       | stopCmd    { /*default*    }
+         | skipCmd    { /*default*    }*/
          | error ';'  { LogError(""); 
                         $$ = nullptr;  }
          ;
-/*
+
 bodyH: bodyB block bodyC { $$ = $2;    }
-     | cmd               { /*default* }
+     | cmd               { /*default*/ }
      ;
 
-bodyB: /*empty*  { LOG->scopes(S); S->initializeScope(); }
+bodyB: /*empty*/  { LOG->scopes(S); S->initializeScope(); }
      ;
 
-bodyC: /*empty* { LOG->scopes(S); S->finalizeScope(); }
+bodyC: /*empty*/ { LOG->scopes(S); S->finalizeScope(); }
      ;
-*/
-/*
+
 ifCmd: IF '(' exp ')' bodyH %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }
      | IF '(' exp ')' bodyH ELSE bodyH     { $$ = HandleCmdIf($3, $5, $7); }
      ;
 
-assignCmd: assign ';'     { /*default }
-         | assignInit ';' { /*default }
+variable: IDENTIFIER             { $$ = HandleVariable($1);     }
+        | IDENTIFIER '[' exp ']' { $$ = HandleVariable($1, $3); }
+
+assignCmd: assign ';'     { /*default*/ }
+         | assignInit ';' { /*default*/ }
          ;
         
-assign: IDENTIFIER ASSIGN expAssign  {/* $$ = HandleAssign($1, $2, $3);   }
-      | IDENTIFIER ASSIGN_STEP       {/* $$ = HandleAssign($2, $1);       }
-      | ASSIGN_STEP IDENTIFIER       {/* $$ = HandleAssign($1, $2);       }
+assign: variable ASSIGN expAssign  { $$ = HandleAssign($1, $2, $3); }
+      | variable ASSIGN_STEP       { $$ = HandleAssign($2, $1);     }
+      | ASSIGN_STEP variable       { $$ = HandleAssign($1, $2);     }
       ;
 
-assignInit: IDENTIFIER ASSIGN_INIT expAssign {/* $$ = HandleAssign("=", $1, $3); }
+assignInit: variable ASSIGN_INIT expAssign { $$ = HandleAssign("=", $1, $3); }
           ;
-*/
+
 expAssign: exp        { /*default*/ }
          | callSub    { /*default*/ }
 /*       | ternaryCmd { /*default* }*/
          ;
 
-readCmd: READ IDENTIFIER ';'                { $$ = HandleCmdRead($2);     }
+readCmd: READ IDENTIFIER ';'             { $$ = HandleCmdRead($2);     }
        | READ IDENTIFIER '[' exp ']' ';' { $$ = HandleCmdRead($2, $4); }
        ;
 
@@ -229,13 +233,13 @@ writeCmdB: /*empty*/     { $$ = HandleCmdWrite(); }
 returnCmd: RETURN exp ';' { $$ = HandleCmdReturn($2);      }
          | RETURN ';'     { $$ = HandleCmdReturn(nullptr); }
          ;
-/*
+
 whileCmd: WHILE '(' exp ')' bodyH { $$ = HandleCmdWhile($3, $5); }
         ;
 
 forCmd: FOR '(' assignInit ';' exp ';' assign ')' bodyH { $$ = HandleCmdFor($3, $5, $7, $9); }
       ;
-*/
+
 callSubCmd: callSub ';' { /*default*/ } 
           ;
 
@@ -306,9 +310,6 @@ listOfIntB: /*empty*/      { $$ = HandleListOfInt(); }
 /*
 ternaryCmd: exp '?' exp ':' exp {}
           ;
-/*
-variable: IDENTIFIER                    { $$ = HandleVariable($1);     }
-        ;
 */
 exp: '(' exp ')'            { $$ = $2;                             }
    | exp '+' exp            { $$ = HandleExpression("+", $1, $3);  }
@@ -330,7 +331,6 @@ exp: '(' exp ')'            { $$ = $2;                             }
    | FALSE                  { $$ = new grc::BooleanExprAST(false); }
    | WORD                   { $$ = new grc::StringExprAST($1);     }
    ;
-
 %%
 
 void yyerror(const char *s) {

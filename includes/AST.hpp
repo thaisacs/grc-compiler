@@ -74,8 +74,10 @@ namespace grc {
     VariableExprAST(const std::string &Name, std::unique_ptr<ExprAST> Index) : 
       Name(Name), Index(std::move(Index)) {}
     llvm::Value* codegen() override;
+    llvm::Value* getAllocaCodegen();
     BasicType getResultingType();
     std::string getName() { return Name; }
+    llvm::Value* getIndex() { return Index->codegen(); }
   };
 
   class ReadExprAST: public ExprAST {

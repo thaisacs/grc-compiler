@@ -65,9 +65,9 @@ grc::ExprAST* HandleExpression(uint8_t, grc::ExprAST*, grc::ExprAST*);
 //// Cmds 
 ////===----------------------------------------------------------------------===//
 /// Assign
-grc::AssignExprAST* HandleAssign(const std::string&, const std::string&, grc::ExprAST*); 
-grc::AssignExprAST* HandleAssign(const std::string&, uint8_t, grc::ExprAST*); 
-grc::AssignExprAST* HandleAssign(uint8_t, const std::string&); 
+grc::AssignExprAST* HandleAssign(const std::string&, grc::VariableExprAST*, grc::ExprAST*); 
+grc::AssignExprAST* HandleAssign(grc::VariableExprAST*, uint8_t, grc::ExprAST*); 
+grc::AssignExprAST* HandleAssign(uint8_t, grc::VariableExprAST*); 
 
 /// If
 grc::ExprAST* HandleCmdIf(grc::ExprAST*, grc::ExprAST*, grc::ExprAST*); 

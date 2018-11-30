@@ -86,7 +86,6 @@ void config(int argc, char *argv[]) {
         break;
       case 'f':
         verifyFile = true;
-        std::cout << optarg << std::endl;
         std::strcpy(FileName, optarg);
         break;
       default:

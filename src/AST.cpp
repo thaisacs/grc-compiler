@@ -217,7 +217,7 @@ llvm::Value* VariableExprAST::codegen() {
           llvm::Value *Element = Builder.CreateLoad(VarValue, Name.c_str());
           llvm::Value *I = Index->codegen();
           llvm::Value *Num = Builder.CreateGEP(Element, I);
-        return Builder.CreateLoad(Num, Name.c_str());
+          return Builder.CreateLoad(Num, Name.c_str());
       }
     }else {
       llvm::Type *Ty, *TA;
@@ -255,19 +255,74 @@ llvm::Value* VariableExprAST::codegen() {
   }
 }
 
+llvm::Value* VariableExprAST::getAllocaCodegen() {
+  std::shared_ptr<Symbol> Symb = S->find(Name);
+  auto VarSymbol = static_cast<VariableSymbol*> (Symb.get());
+  
+  if(!VarSymbol)
+   return nullptr; 
+ 
+  auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
+  
+  llvm::Value *VarValue = NamedValues[Name];
+  
+  if (!VarValue)
+    return nullptr;
+
+  if(!VarSymbol->getType()->getArrayType()->isArray && VarBType != BasicType::String) {
+    // Load the value.
+    return VarValue;
+  }else {
+    if(VarSymbol->getArgument()) {
+      switch(VarBType) {
+        case BasicType::Int:
+        case BasicType::Bool:
+          llvm::Value *Element = Builder.CreateLoad(VarValue, Name.c_str());
+          llvm::Value *I = Index->codegen();
+          return Builder.CreateGEP(Element, I);
+      }
+    }else {
+      llvm::Type *Ty, *TA;
+      llvm::Value *Num, *I, *PtrArray;
+      switch(VarBType) {
+        case BasicType::Int:
+          Ty = llvm::IntegerType::getInt32Ty(TheContext);
+          TA = llvm::ArrayType::get(Ty, VarSymbol->getType()->getArrayType()->Size);
+          I = Index->codegen();
+          PtrArray = Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
+          return Builder.CreateGEP(PtrArray, I);
+        case BasicType::Bool:
+          Ty = llvm::IntegerType::getInt1Ty(TheContext);
+          TA = llvm::ArrayType::get(Ty, VarSymbol->getType()->getArrayType()->Size);
+          I = Index->codegen();
+          PtrArray = Builder.CreateConstGEP2_32(TA, VarValue, 0, 0);
+          return Builder.CreateGEP(PtrArray, I);
+      }
+    }
+  }
+}
+
 BasicType VariableExprAST::getResultingType() {
   std::shared_ptr<Symbol> VarSymbol = S->find(Name);
   if(VarSymbol) {
     switch(VarSymbol->getType()->getPrimitiveType()->getBasicType()) {
       case BasicType::Int:
         if(VarSymbol->getType()->getArrayType()->isArray) {
-          return BasicType::IntArray;
+          if(!Index) {
+            return BasicType::IntArray;
+          }else {
+            return BasicType::Int;
+          }
         }else {
           return BasicType::Int;
         }
       case BasicType::Bool:
         if(VarSymbol->getType()->getArrayType()->isArray) {
-          return BasicType::BoolArray;
+          if(!Index) {
+            return BasicType::BoolArray;
+          }else {
+            return BasicType::Bool;
+          }
         }else {
           return BasicType::Bool;
         }
@@ -484,35 +539,35 @@ BasicType ForExprAST::getResultingType() {
 
 
 llvm::Value* WhileExprAST::codegen() {
-  //llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+  llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
 
-  //llvm::BasicBlock *CondBB = 
-  //  llvm::BasicBlock::Create(TheContext, "condloop", TheFunction); 
-  //llvm::BasicBlock *LoopBB = 
-  //  llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
-  //llvm::BasicBlock *AfterBB = 
-  //  llvm::BasicBlock::Create(TheContext, "afterloop", TheFunction);
+  llvm::BasicBlock *CondBB = 
+    llvm::BasicBlock::Create(TheContext, "condloop", TheFunction); 
+  llvm::BasicBlock *LoopBB = 
+    llvm::BasicBlock::Create(TheContext, "loop", TheFunction);
+  llvm::BasicBlock *AfterBB = 
+    llvm::BasicBlock::Create(TheContext, "afterloop", TheFunction);
 
-  //Builder.CreateBr(CondBB);
+  Builder.CreateBr(CondBB);
 
-  //Builder.SetInsertPoint(CondBB);
-  //
-  //llvm::Value *CondV = Cond->codegen();
-  //if(!Cond)
-  //  return nullptr;
+  Builder.SetInsertPoint(CondBB);
+  
+  llvm::Value *CondV = Cond->codegen();
+  if(!Cond)
+    return nullptr;
 
-  //Builder.CreateCondBr(CondV, LoopBB, AfterBB);
+  Builder.CreateCondBr(CondV, LoopBB, AfterBB);
 
-  //Builder.SetInsertPoint(LoopBB);
-  //if(!Block->codegen())
-  //  return nullptr;
-  //Builder.CreateBr(CondBB);
+  Builder.SetInsertPoint(LoopBB);
+  if(!Block->codegen())
+    return nullptr;
+  Builder.CreateBr(CondBB);
 
-  //Builder.SetInsertPoint(AfterBB);
+  Builder.SetInsertPoint(AfterBB);
 }
 
 BasicType WhileExprAST::getResultingType() {
-  //return BasicType::Undefined;
+  return BasicType::Undefined;
 }
 
 //===------------------------------------------------------------------------===//
@@ -520,40 +575,73 @@ BasicType WhileExprAST::getResultingType() {
 ////===----------------------------------------------------------------------===//
 
 llvm::Value* AssignExprAST::codegen() {
-  //llvm::Value *Val = Expr->codegen(); 
-  //
-  //if(!Val)
-  //  return nullptr;
+  llvm::Value *ExprVal = Expr->codegen(); 
+  
+  if(!ExprVal)
+    return nullptr;
 
-  //llvm::Value *Variable = NamedValues[Name];
-  //if (!Variable)
-  //  return nullptr;
-  //  
-  //llvm::Value *OldVal = Builder.CreateLoad(Variable, Name.c_str());
-  //llvm::Value *Result;
+  llvm::Value *VarValue = Var->codegen();
+  if (!VarValue)
+    return nullptr;
+    
+  llvm::Value *Result;
 
-  //if(Op == "=") {
-  //  Result = Val;
-  //}else if(Op == "+=") {
-  //  Result = Builder.CreateAdd(OldVal, Val, "resultmp");
-  //}else if(Op == "-=") {
-  //  Result = Builder.CreateSub(OldVal, Val, "resultmp");
-  //}else if(Op == "*=") {
-  //  Result = Builder.CreateMul(OldVal, Val, "resultmp");
-  //}else if(Op == "/=") {
-  //  llvm::Value *Result = Builder.CreateSDiv(OldVal, Val, "resultmp");
-  //}else if(Op == "%=") {
-  //  llvm::Value *RD = Builder.CreateSDiv(OldVal, Val, "resultmp");
-  //  llvm::Value *Result1 = Builder.CreateMul(RD, Val, "resultmp");
-  //  Result1 = Builder.CreateSub(OldVal, Result1, "resultmp");
-  //} 
-  //
-  //Builder.CreateStore(Result, Variable);
-  //return Result;;
+  if(Op == "=") {
+    Result = ExprVal;
+  }else if(Op == "+=") {
+    Result = Builder.CreateAdd(VarValue, ExprVal, "resultmp");
+  }else if(Op == "-=") {
+    Result = Builder.CreateSub(VarValue, ExprVal, "resultmp");
+  }else if(Op == "*=") {
+    Result = Builder.CreateMul(VarValue, ExprVal, "resultmp");
+  }else if(Op == "/=") {
+    llvm::Value *Result = Builder.CreateSDiv(VarValue, ExprVal, "resultmp");
+  }else if(Op == "%=") {
+    llvm::Value *RD = Builder.CreateSDiv(VarValue, ExprVal, "resultmp");
+    llvm::Value *Result1 = Builder.CreateMul(RD, ExprVal, "resultmp");
+    Result1 = Builder.CreateSub(VarValue, Result1, "resultmp");
+  } 
+  /*
+  std::shared_ptr<Symbol> Symb = S->find(Var->getName());
+  auto VarSymbol = static_cast<VariableSymbol*> (Symb.get());
+  
+  if(!VarSymbol)
+    return nullptr; 
+ 
+  auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
+  
+  llvm::Value *Variable = NamedValues[Var->getName()];
+  
+  if(!Variable)
+    return nullptr;
+
+  if(!VarSymbol->getType()->getArrayType()->isArray) {
+    Builder.CreateStore(Result, Variable);
+  }else {
+    if(VarSymbol->getArgument()) {
+      llvm::Value *Element = Builder.CreateLoad(Variable, Var->getName().c_str());
+      llvm::Value *I = Var->getIndex();
+      llvm::Value *V = Builder.CreateGEP(Element, I);
+      Builder.CreateStore(Result, V);
+    }else {
+      llvm::Value *I = Var->getIndex();
+      llvm::Type *Ty = llvm::IntegerType::getInt32Ty(TheContext);
+      llvm::Type *TA = llvm::ArrayType::get(Ty, VarSymbol->getType()->getArrayType()->Size);
+      llvm::Value *PtrArray = Builder.CreateConstGEP2_32(TA, Variable, 0, 0);
+      llvm::Value *Num = Builder.CreateGEP(PtrArray, I);
+      Builder.CreateStore(Result, Num);
+    }
+  }*/
+
+  llvm::Value *AllocaVar = Var->getAllocaCodegen();
+
+  Builder.CreateStore(Result, AllocaVar);
+
+  return Result;
 }
 
 BasicType AssignExprAST::getResultingType() {
-  //return BasicType::Undefined;
+  return BasicType::Undefined;
 }
 
 //===------------------------------------------------------------------------===//
