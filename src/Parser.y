@@ -25,12 +25,11 @@
   extern std::unique_ptr<llvm::Module> TheModule;
   extern std::shared_ptr<grc::Scope> S;
   extern std::unique_ptr<grc::Log> LOG;
-  extern bool isError;
+  extern bool isError, doLog;
 
   extern int yylineno;
   extern char* yytext;
   void yyerror(const char *s);
-
 %}
 
 %define parse.error verbose
@@ -123,7 +122,7 @@ decSub: prototype block { if($1 && $2) {
                             if(Sub && !isError) {
                               std::unique_ptr<grc::SubroutineAST> SubAST(Sub);
                               auto SubIR = SubAST->codegen();
-                              LOG->scopes(S); 
+                              if(doLog) LOG->scopes(S); 
                             }else {
                               exit(0);
                             }
@@ -185,10 +184,10 @@ bodyH: bodyB block bodyC { $$ = $2;    }
      | cmd               { /*default*/ }
      ;
 
-bodyB: /*empty*/  { LOG->scopes(S); S->initializeScope(); }
+bodyB: /*empty*/  { if(doLog) LOG->scopes(S); S->initializeScope(); }
      ;
 
-bodyC: /*empty*/ { LOG->scopes(S); S->finalizeScope(); }
+bodyC: /*empty*/ { if(doLog) LOG->scopes(S); /*S->finalizeScope();*/ }
      ;
 
 ifCmd: IF '(' exp ')' bodyH %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }

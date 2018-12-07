@@ -18,10 +18,12 @@ bool Scope::insert(const std::string &Name, std::shared_ptr<Symbol> Symbol) {
 }
 
 std::shared_ptr<Symbol> Scope::find(const std::string &Name) {
+  std::cout << SymbolTables.size() << std::endl;
   for(int i = SymbolTables.size() - 1; i >= 0; i--) {
     auto Symb = SymbolTables[i]->find(Name);
-    if(Symb != nullptr)
+    if(Symb != nullptr) {
       return Symb;
+    }
   }
   return nullptr;
 }

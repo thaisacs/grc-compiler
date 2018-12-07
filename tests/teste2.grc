@@ -1,0 +1,21 @@
+import io
+
+def teste(a : int) {
+}
+
+def main() : int {
+  var a = -2 : int;
+  var t = true : bool;
+  
+  write "%d", a;
+
+  if(t) {
+    var a : int;
+    a = 10;
+    write "%d", a;
+  }
+  
+  write "%d", a;
+
+  return 0;
+}

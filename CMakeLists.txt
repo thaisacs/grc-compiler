@@ -14,7 +14,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 BISON_TARGET(MyParser src/Parser.y ${CMAKE_CURRENT_BINARY_DIR}/Parser.cpp
-             COMPILE_FLAGS -v)
+             COMPILE_FLAGS)
 FLEX_TARGET(MyScanner src/Scanner.l  ${CMAKE_CURRENT_BINARY_DIR}/Scanner.cpp)
 ADD_FLEX_BISON_DEPENDENCY(MyScanner MyParser)
 

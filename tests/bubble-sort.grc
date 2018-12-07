@@ -1,24 +1,12 @@
 import io
 
-def main() : int {
-  var v[10]: int;
-  var a, b: bool;
-  var c = true, d = !c: bool;
-  var i : int;
-  var k = 0, j, aux: int;
+def bubblesort(v[]: int; n: int) {
+  var i = 0, j: int;
   var trocou = true: bool;
-  var n = 10 : int;
-
-  for (i=0; i<10; i+=1) {
-    write "A[%d] = ", i;
-    read v[i];
-  }
-
-  write "-------------------";
-
-  while (k < n-1 && trocou) {
+  var aux : int;
+  while (i < n-1 && trocou) {
     trocou = false;
-    for (j=0; j<(n-k-1); j+=1) {
+    for (j=0; j<(n-i-1); j+=1) {
       if (v[j] > v[j+1]) {
         aux = v[j];
         v[j] = v[j+1];
@@ -26,10 +14,21 @@ def main() : int {
         trocou = true;
       }
     }
-    k += 1;
+    i += 1;
   }
+}
 
-  for (i=0; i<10; i+=1) {
+def main() : int {
+  var n = 10, v[10] : int;
+  var i: int;
+  write "Digite os valores do arranjo:";
+  for (i=0; i < n; i+=1) {
+    write "A[%d] = ", i;
+    read v[i];
+  }
+  bubblesort(v, n);
+  write "Arranjo ordenado: ";
+  for (i = 0; i < n; i += 1) {
     write "%d", v[i];
   }
   return 0;

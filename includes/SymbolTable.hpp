@@ -1,6 +1,7 @@
 #pragma once
 
 #include "llvm/IR/Value.h"
+#include "llvm/IR/Instructions.h"
 
 #include <iostream>
 #include <vector>
@@ -51,6 +52,7 @@ namespace grc {
  
   class VariableSymbol : public Symbol {
     std::shared_ptr<Type> T;
+    llvm::AllocaInst* Value;
     bool Argument; 
   public:
     VariableSymbol(std::shared_ptr<Type> T, bool Argument) : T(T), Argument(Argument) {}
@@ -58,6 +60,8 @@ namespace grc {
     SymbolType getSymbolType() override;
     void toPrint(std::ofstream&) override;
     bool getArgument() { return Argument; }
+    llvm::AllocaInst* getValue() { return Value; }
+    void setValue(llvm::AllocaInst *V) { Value = V; }
   };
 
   class ProcedureSymbol : public Symbol {

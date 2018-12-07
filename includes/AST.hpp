@@ -214,7 +214,6 @@ namespace grc {
     BlockExprAST(std::vector<std::unique_ptr<ExprAST>> Exps) : Exps(std::move(Exps)) {}; 
     llvm::Value* codegen() override;
     BasicType getResultingType();
-    void print();
   };
 
   class PrototypeAST {
@@ -225,7 +224,6 @@ namespace grc {
       Name(name), Args(Args) {}
     const std::string &getName() const { return Name; };
     llvm::Function* codegen();
-    void print();
   };
 
   class SubroutineAST {
@@ -235,6 +233,5 @@ namespace grc {
     SubroutineAST(std::unique_ptr<PrototypeAST> Proto, std::unique_ptr<BlockExprAST> Body) : 
       Proto(std::move(Proto)), Body(std::move(Body)) {}
     llvm::Function* codegen();
-    void print();
   };
 }

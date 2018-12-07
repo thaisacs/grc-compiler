@@ -5,7 +5,6 @@
 using namespace grc;
 
 extern std::shared_ptr<grc::Scope> S;
-extern std::unique_ptr<grc::Log> LOG;
 extern llvm::LLVMContext TheContext;
 extern std::unique_ptr<llvm::Module> TheModule;
 extern int yylineno;

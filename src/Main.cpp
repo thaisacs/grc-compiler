@@ -30,10 +30,10 @@ extern bool isError;
 llvm::LLVMContext TheContext;
 std::unique_ptr<llvm::Module> TheModule;
 std::shared_ptr<grc::Scope> S = std::make_shared<grc::Scope>();
-std::unique_ptr<grc::Log> LOG = std::make_unique<grc::Log>("GRCLog.out");
+std::unique_ptr<grc::Log> LOG;
 
-char FileName[50];
-bool isError, doOpt, doLog;
+char FileName[150];
+bool isError, doOpt, doLog, doView;
 
 void InitializeModuleAndPassManager() {
   // Open a new Module
@@ -41,12 +41,12 @@ void InitializeModuleAndPassManager() {
 }
 
 void usage() {
-  std::cout << "Usage: grcc [options] -F <filename>\n";
+  std::cout << "Usage: grcc [options] -f <filename>\n";
   std::cout << "Options:\n";
-  std::cout << "  --help, -h        \t Display this information.\n";
-  std::cout << "  --file, -f <name> \t Display this information.\n";
-  std::cout << "  -O                \t Active optimization.\n";
-  std::cout << "  -L                \t Write scopes in file 'GRCLog.out'.\n";
+  std::cout << "  -h        \t Display this information.\n";
+  std::cout << "  -O        \t Active optimization.\n";
+  std::cout << "  -l        \t Write scopes in file 'GRCLog.out'.\n";
+  std::cout << "  -v        \t Display IR\n";
 }
 
 void OptRun() {
@@ -58,21 +58,17 @@ void config(int argc, char *argv[]) {
   int op;
   bool verifyFile = false;
 
-  struct option Options[] = {
-    {"help", no_argument, NULL, 'h'},
-    {"file", required_argument, NULL, 'f'},
-  };
-
   isError = false;
   doOpt = false;
   doLog = false;
+  doView = false;
 
   if(argc == 1) {
     std::cerr << "invalid arguments\n";
     exit(1);
   }
   
-  while((op = getopt_long(argc, argv, "OLhf:", Options, NULL)) > 0) {
+  while((op = getopt(argc, argv, "Olvhf:")) > 0) {
     switch(op) {
       case 'h':
         usage();
@@ -81,12 +77,15 @@ void config(int argc, char *argv[]) {
       case 'O':
         doOpt = true;
         break;
-      case 'L':
+      case 'l':
         doLog = true;
         break;
       case 'f':
         verifyFile = true;
         std::strcpy(FileName, optarg);
+        break;
+      case 'v':
+        doView = true;
         break;
       default:
         exit(0);
@@ -100,11 +99,21 @@ void config(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
+  std::error_code EC;
+  
   config(argc, argv);
 
   FILE *i = fopen(FileName, "r");
-
+  if(!i) {
+    std::cerr << "File '" << FileName << "' not found\n";
+    exit(0);
+  }
+  
   InitializeModuleAndPassManager();
+  
+  if(doLog) {
+    LOG = std::make_unique<grc::Log>("GRCLog.out");
+  }
 
   S->initializeScope();
 
@@ -113,9 +122,10 @@ int main(int argc, char *argv[]) {
 
   S->finalizeScope();
   
-  TheModule->print(errs(), nullptr);
-  
   if(!isError) {
+    if(doView)
+      TheModule->print(errs(), nullptr);
+  
     if(doOpt)
       OptRun(); 
 
@@ -168,7 +178,11 @@ int main(int argc, char *argv[]) {
 
     Function *Main = TheModule->getFunction("main");
     if(Main) {
-      TheModule->print(errs(), nullptr);
+      if(doOpt && doView) {
+        std::cout << "=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#=#\n";
+        TheModule->print(errs(), nullptr);
+      }
+      
       system("clang-7 prog.o");
     }else {
       std::cerr << "'main' function not found" << std::endl;
