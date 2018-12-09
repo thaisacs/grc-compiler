@@ -9,7 +9,7 @@
 
 whitespace [ \r\f\v\t]
 linefeed   \n
-identifier _?[a-zA-Z]+[0-9]*[a-zA-Z]*
+identifier _?[a-zA-Z]+_*[0-9]*[a-zA-Z]*
 number     [0-9]+
 comment    "//".*\n
 string     "\"".*"\""

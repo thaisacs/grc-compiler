@@ -105,12 +105,12 @@ decs: /*empty*/
     ;
 
 vars: /*empty*/
-    | vars varCmd { if($2) $2->globalCodegen();  }
+    | vars varCmd { LogError("grcc does not support global variable"); }
 
-type: TYPE_INT                   { $$ = HandleType(grc::BasicType::Int, 0);     }
-    | TYPE_BOOL                  { $$ = HandleType(grc::BasicType::Bool, 0);    }
+type: TYPE_INT                   { $$ = HandleType(grc::BasicType::Int, 0);      }
+    | TYPE_BOOL                  { $$ = HandleType(grc::BasicType::Bool, 0);     }
     | TYPE_STRING                { $$ = HandleType(grc::BasicType::String, 255); }
-    | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::BasicType::String, $3); }
+    | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::BasicType::String, $3);  }
     ;
 
 prototype: DEF IDENTIFIER '(' listOfParams ')'          { $$ = HandlePrototype($2, $4);     }
@@ -123,8 +123,6 @@ decSub: prototype block { if($1 && $2) {
                               std::unique_ptr<grc::SubroutineAST> SubAST(Sub);
                               auto SubIR = SubAST->codegen();
                               if(doLog) LOG->scopes(S); 
-                            }else {
-                              exit(0);
                             }
                           }
                           S->finalizeScope();
@@ -132,7 +130,7 @@ decSub: prototype block { if($1 && $2) {
       ;
 
 listOfParams: /*empty*/    { $$ = HandleListOfParams(); }
-            | listOfParamH { /*default*/ }
+            | listOfParamH { /*default*/                }
 
 listOfParamH: listOfParamB listOfParamT { HandleListOfParams($1, $2); $$ = $1; }
             ;
@@ -174,8 +172,8 @@ simpleCmd: varCmd     { /*default*/    }
          | ifCmd      { /*default*/    }
          | whileCmd   { /*default*/    }
          | forCmd     { /*default*/    }
-/*       | stopCmd    { /*default*    }
-         | skipCmd    { /*default*    }*/
+/*       | stopCmd    { /*default*     }
+         | skipCmd    { /*default*     }*/
          | error ';'  { LogError(""); 
                         $$ = nullptr;  }
          ;
@@ -187,7 +185,7 @@ bodyH: bodyB block bodyC { $$ = $2;    }
 bodyB: /*empty*/  { if(doLog) LOG->scopes(S); S->initializeScope(); }
      ;
 
-bodyC: /*empty*/ { if(doLog) LOG->scopes(S); /*S->finalizeScope();*/ }
+bodyC: /*empty*/ { if(doLog) LOG->scopes(S); S->decrementSC(); }
      ;
 
 ifCmd: IF '(' exp ')' bodyH %prec END_ELSE { $$ = HandleCmdIf($3, $5);     }
@@ -209,8 +207,8 @@ assign: variable ASSIGN expAssign  { $$ = HandleAssign($1, $2, $3); }
 assignInit: variable ASSIGN_INIT expAssign { $$ = HandleAssign("=", $1, $3); }
           ;
 
-expAssign: exp        { /*default*/ }
-         | callSub    { /*default*/ }
+expAssign: exp                  { /*default*/ }
+         | callSub              { /*default*/ }
 /*       | ternaryCmd { /*default* }*/
          ;
 
@@ -222,7 +220,7 @@ writeCmd: WRITE writeCmdH ';' { $$ = HandleCmdWrite($2); }
         ;
 
 writeCmdH: writeCmdB exp      { HandleCmdWrite($1, $2); $$ = $1; }
- /*      | writeCmdB callSub  { HandleCmdWrite($1, $2); $$ = $1; }*/
+         | writeCmdB callSub  { HandleCmdWrite($1, $2); $$ = $1; }
          ;
 
 writeCmdB: /*empty*/     { $$ = HandleCmdWrite(); }

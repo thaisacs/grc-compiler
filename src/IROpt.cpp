@@ -28,8 +28,8 @@ void grc::IROpt::populateFuncPassManager(llvm::legacy::FunctionPassManager* FPM,
         FPM->add(llvm::createInstructionCombiningPass());
         break;
       case str2int("simplifycfg"):
-        FPM->add(llvm::createCFGSimplificationPass());
-        break;
+      //  FPM->add(llvm::createCFGSimplificationPass());
+      //  break;
       case str2int("reassociate"):
         FPM->add(llvm::createReassociatePass());
         break;
@@ -42,9 +42,9 @@ void grc::IROpt::populateFuncPassManager(llvm::legacy::FunctionPassManager* FPM,
       case str2int("dce"):
         FPM->add(llvm::createDeadCodeEliminationPass());
         break;
-      //case str2int("mem2reg"):
-      //  FPM->add(llvm::createPromoteMemoryToRegisterPass());
-      //  break;
+      case str2int("mem2reg"):
+        FPM->add(llvm::createPromoteMemoryToRegisterPass());
+        break;
       case str2int("licm"):
         FPM->add(llvm::createLICMPass());
         break;
@@ -83,8 +83,8 @@ void grc::IROpt::optimizeIRFunction(llvm::Module *M, OptLevel Level) {
     if (!BasicPM) {
       BasicPM = std::make_unique<llvm::legacy::FunctionPassManager>(M);
       populateFuncPassManager(BasicPM.get(), 
-        {"adce", "simplifycfg", "reassociate", "gvn", "die", "dce", "licm", 
-        "memcpyopt", "loop-unswitch", "indvars", "loop-deletion", "loop-predication", "loop-unroll" , 
+        {"adce", "simplifycfg", "reassociate", "gvn", "die", "dce", "licm", "mem2reg",
+         "loop-unswitch", "indvars", "loop-deletion", "loop-predication", "loop-unroll" , 
         "simplifycfg", "licm", "gvn"});
       BasicPM->doInitialization();
     }

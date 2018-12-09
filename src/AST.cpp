@@ -25,7 +25,6 @@ using namespace grc;
 extern llvm::LLVMContext TheContext;
 extern std::unique_ptr<llvm::Module> TheModule;
 extern std::shared_ptr<Scope> S;
-
 extern int yylineno;
 
 llvm::IRBuilder<> Builder(TheContext);
@@ -33,8 +32,6 @@ llvm::IRBuilder<> Builder(TheContext);
 //===------------------------------------------------------------------------===//
 //// Variable IR
 ////===----------------------------------------------------------------------===//
-
-//static std::map<std::string, llvm::AllocaInst*> NamedValues;
 
 static llvm::AllocaInst* CreateEntryBlockAlloca(llvm::Function *TheFunction,
     const std::string &VarName) {
@@ -193,12 +190,14 @@ llvm::Value* VariableExprAST::codegen() {
   std::shared_ptr<Symbol> Symb = S->find(Name);
   auto VarSymbol = static_cast<VariableSymbol*> (Symb.get());
   
-  if(!VarSymbol)
-   return nullptr; 
- 
+  if(!VarSymbol) {
+    std::string MsgError = "variable '" + Name + "' was not declared";
+    LogError(MsgError, yylineno);
+    return nullptr; 
+  }
+
   auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
   
-  //llvm::Value *VarValue = NamedValues[Name];
   llvm::Value *VarValue = VarSymbol->getValue();
   
   if (!VarValue)
@@ -265,7 +264,6 @@ llvm::Value* VariableExprAST::getAllocaCodegen() {
   auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
   
   llvm::Value *VarValue = VarSymbol->getValue();
-  //llvm::Value *VarValue = NamedValues[Name];
   
   if (!VarValue)
     return nullptr;
@@ -649,15 +647,7 @@ BasicType AssignExprAST::getResultingType() {
 //// VarExprAST
 ////===----------------------------------------------------------------------===//
 
-llvm::Value* VarExprAST::globalCodegen() {
-  //llvm::Type* I = llvm::IntegerType::getInt32Ty(TheContext);
-  //llvm::GlobalVariable(*TheModule.get(), I, false, 
-  //    llvm::GlobalValue::CommonLinkage, nullptr, "a");
-
-  //for(unsigned i = 0; i < Vars.size(); i++) {
-  //}
-  llvm::GlobalVariable *gVar = AllocaGlobal("a");
-}
+llvm::Value* VarExprAST::globalCodegen() {}
 
 llvm::Value* VarExprAST::codegen() {
   llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
@@ -693,7 +683,6 @@ llvm::Value* VarExprAST::codegen() {
             auto VarSymbol = static_cast<VariableSymbol*>(Symb.get());
             VarSymbol->setValue(Alloca);
             
-            //NamedValues[VarName] = Alloca;
           }else {
             llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
             llvm::Type* I = llvm::IntegerType::getInt32Ty(TheContext);
@@ -711,7 +700,6 @@ llvm::Value* VarExprAST::codegen() {
             auto VarSymbol = static_cast<VariableSymbol*>(Symb.get());
             VarSymbol->setValue(Alloca);
 
-            //NamedValues[VarName] = Alloca;
           }
           break;
         case BasicType::Bool:
@@ -731,7 +719,6 @@ llvm::Value* VarExprAST::codegen() {
             auto VarSymbol = static_cast<VariableSymbol*>(Symb.get());
             VarSymbol->setValue(Alloca);
             
-            //NamedValues[VarName] = Alloca;
           }else {
             llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(TheFunction, VarName);
             BooleansExprAST *IEAST = static_cast<BooleansExprAST*>(Init);
@@ -749,8 +736,6 @@ llvm::Value* VarExprAST::codegen() {
             std::shared_ptr<Symbol> Symb = S->find(VarName);
             auto VarSymbol = static_cast<VariableSymbol*>(Symb.get());
             VarSymbol->setValue(Alloca);
-            
-            //NamedValues[VarName] = Alloca;
           }
           break;
       }
@@ -784,7 +769,6 @@ llvm::Value* VarExprAST::codegen() {
       auto VarSymbol = static_cast<VariableSymbol*>(Symb.get());
       VarSymbol->setValue(Alloca);
       
-      //NamedValues[VarName] = Alloca;
     }else {
       ExprAST *Init = Vars[i]->getExpr();
       if(Init) {
@@ -806,7 +790,6 @@ llvm::Value* VarExprAST::codegen() {
       std::shared_ptr<Symbol> Symb = S->find(VarName);
       auto VarSymbol = static_cast<VariableSymbol*>(Symb.get());
       VarSymbol->setValue(Alloca);
-      //NamedValues[VarName] = Alloca;
     }
   } 
 }
@@ -859,7 +842,6 @@ llvm::Value* ReadExprAST::codegen() {
  
     auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
   
-    //llvm::Value *VarValue = NamedValues[Name];
     llvm::Value *VarValue = VarSymbol->getValue();
 
   
@@ -946,9 +928,11 @@ BasicType CallExprAST::getResultingType() {
 ////===----------------------------------------------------------------------===//
 
 llvm::Value* BlockExprAST::codegen() {
+  S->incrementSC();
   for(int i = 0; i < Exps.size(); i++) {
     Exps[i]->codegen();
   }
+  S->decrementSC();
   return llvm::ConstantInt::get(TheContext, llvm::APInt(32, 0));
 }
 
@@ -1001,7 +985,7 @@ llvm::Function* PrototypeAST::codegen() {
         ArgsVector.push_back(llvm::Type::getVoidTy(TheContext));
     }
   }
-
+  
   auto T = S->find(Name)->getType()->getPrimitiveType();
 
   switch(T->getBasicType()) {
@@ -1043,8 +1027,6 @@ llvm::Function* SubroutineAST::codegen() {
   llvm::BasicBlock *BB = llvm::BasicBlock::Create(TheContext, "entry", TheFunction);
   Builder.SetInsertPoint(BB);
   
-  //NamedValues.clear();
-  
   for(auto &Arg : TheFunction->args()) {
     //Create an alloca for this variable.
     llvm::AllocaInst *AllocaArgs = CreateEntryBlockAllocaArgs(TheFunction, Arg.getName());
@@ -1054,9 +1036,10 @@ llvm::Function* SubroutineAST::codegen() {
     std::shared_ptr<Symbol> Symb = S->find(Arg.getName());
     auto VarSymbol = static_cast<VariableSymbol*>(Symb.get());
     VarSymbol->setValue(AllocaArgs);
-    //NamedValues[Arg.getName()] = AllocaArgs;
   }
-  
+
+  S->initSC(0);
+
   if (llvm::Value *RetVal = Body->codegen()) {
     //Finish off the function.
     Builder.CreateRetVoid();

@@ -46,7 +46,7 @@ void usage() {
   std::cout << "  -h        \t Display this information.\n";
   std::cout << "  -O        \t Active optimization.\n";
   std::cout << "  -l        \t Write scopes in file 'GRCLog.out'.\n";
-  std::cout << "  -v        \t Display IR\n";
+  std::cout << "  -v        \t Display IR.\n";
 }
 
 void OptRun() {

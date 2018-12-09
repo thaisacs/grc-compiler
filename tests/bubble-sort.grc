@@ -3,12 +3,12 @@ import io
 def bubblesort(v[]: int; n: int) {
   var i = 0, j: int;
   var trocou = true: bool;
-  var aux : int;
+  
   while (i < n-1 && trocou) {
     trocou = false;
     for (j=0; j<(n-i-1); j+=1) {
       if (v[j] > v[j+1]) {
-        aux = v[j];
+        var aux = v[j] : int;
         v[j] = v[j+1];
         v[j+1] = aux;
         trocou = true;
@@ -21,15 +21,20 @@ def bubblesort(v[]: int; n: int) {
 def main() : int {
   var n = 10, v[10] : int;
   var i: int;
+  
   write "Digite os valores do arranjo:";
+  
   for (i=0; i < n; i+=1) {
     write "A[%d] = ", i;
     read v[i];
   }
+  
   bubblesort(v, n);
   write "Arranjo ordenado: ";
+  
   for (i = 0; i < n; i += 1) {
     write "%d", v[i];
   }
+  
   return 0;
 }

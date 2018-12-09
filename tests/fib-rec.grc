@@ -1,0 +1,22 @@
+import io
+
+def fib(n : int) : int {
+  if(n <= 2)
+    return 1;
+  var i = fib(n-1) : int;
+  var j = fib(n-2) : int;
+  return i + j;
+}
+
+def main() : int {
+  var r, n : int;
+  
+  write "n:";
+  read n;
+
+  r = fib(n);
+
+  write "%d", r;
+
+  return 0;
+}

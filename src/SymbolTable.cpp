@@ -126,6 +126,16 @@ std::shared_ptr<Symbol> SymbolTable::find(const std::string &Name) {
   return nullptr;
 }
 
+std::shared_ptr<Symbol> SymbolTable::findCurrentSub() {
+  std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
+  for(it = Table.begin(); it != Table.end(); ++it) {
+    if(it->second->getSymbolType() == SymbolType::Function) {
+      return it->second;
+    }
+  }
+  return nullptr;
+}
+
 void SymbolTable::toPrint(std::ofstream &File) {
   std::map<std::string, std::shared_ptr<Symbol>>::iterator it;
   for (it = Table.begin(); it != Table.end(); ++it) {

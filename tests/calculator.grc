@@ -1,0 +1,53 @@
+import io
+
+def calculator(a, b, op: int) : int {
+  if(op == 1)
+    return a + b;  
+  if(op == 2)
+    return a - b;  
+  if(op == 3)
+    return a * b;
+  if(op == 4)
+    return a / b;
+  if(op == 5)
+    return a % b;
+  return 0;
+}
+
+
+def print_header() {
+  write "+-+-+-+-+-+-+-+";
+  write "+ CALCULADORA +";
+  write "+-+-+-+-+-+-+-+";
+}
+
+def print_menu() {
+  write "1. Somar";
+  write "2. Subtrair";
+  write "3. Multiplicar";
+  write "4. Dividir";
+  write "5. Resto";
+  write "0. Sair";
+  write "OP:";
+}
+
+def main() : int {
+  var a = 0, b = 0: int;
+  var op = 1, r : int;
+
+  while(op != 0) { 
+    print_header();
+    print_menu();
+    read op;
+    if(op != 0) {
+      write "a:";
+      read a;
+      write "b:";
+      read b;
+      r = calculator(a, b, op);
+      write "result: %d", r;
+    }
+  }
+  
+  return 0;
+}

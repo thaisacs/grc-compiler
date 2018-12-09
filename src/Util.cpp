@@ -26,7 +26,16 @@ grc::VariableExprAST* HandleVariable(const std::string &Name) {
 }
 
 grc::VariableExprAST* HandleVariable(const std::string &Name, grc::ExprAST *Expr) {
+  
+  auto ExprType = Expr->getResultingType();
+
+  if(ExprType != BasicType::Int) {
+    std::string ErrorMsg = "index is not Int";
+    LogError(ErrorMsg, yylineno);
+  } 
+  
   std::unique_ptr<ExprAST> UPExpr(Expr);
+  
   return new VariableExprAST(Name, std::move(UPExpr));
 }
 
@@ -69,6 +78,29 @@ ExprAST* HandleExpression(uint8_t Op, ExprAST* ExprL, ExprAST* ExprR) {
 ////===----------------------------------------------------------------------===//
 
 ExprAST* HandleCmdReturn(ExprAST *Expr) {
+  std::shared_ptr<Symbol> Sym = S->findCurrentSub();
+  
+  if(!Sym && Expr) {
+      std::string ErrorMsg = "procedure has no return value";
+      LogError(ErrorMsg, yylineno);
+      return nullptr; 
+  }
+  
+  if(Sym) {
+    auto SymType = Sym->getType()->getPrimitiveType()->getBasicType();
+    if(!Expr) {
+      std::string ErrorMsg = "function can not have empty return";
+      LogError(ErrorMsg, yylineno);
+      return nullptr; 
+    }
+    auto ExprType = Expr->getResultingType();
+    if(SymType != ExprType) {
+      std::string ErrorMsg = "return type is not the same as the function type";
+      LogError(ErrorMsg, yylineno);
+      return nullptr; 
+    }
+  }
+
   std::unique_ptr<ExprAST> UPVal(Expr);
   return new ReturnExprAST(std::move(UPVal));
 }
@@ -105,6 +137,11 @@ ExprAST* HandleCmdIf(ExprAST* Cond, ExprAST* Then) {
 ////===----------------------------------------------------------------------===//
 
 ExprAST* HandleCmdFor(ExprAST *Start, ExprAST *End, ExprAST *Step, ExprAST *Body) {
+  if(End->getResultingType() != BasicType::Bool) {
+    std::string ErrorMsg = "for condition is not of type Bool";
+    LogError(ErrorMsg, yylineno);
+    return nullptr; 
+  }
   std::unique_ptr<ExprAST> UPStart(Start);
   std::unique_ptr<ExprAST> UPEnd(End);
   std::unique_ptr<ExprAST> UPStep(Step);
@@ -212,11 +249,28 @@ WriteExprAST* HandleCmdWrite(Expressions *Exprs) {
 }
 
 ReadExprAST* HandleCmdRead(const std::string &Iden) {
+  auto Sym = (S->find(Iden)).get();
+  if(!Sym) {
+    std::string MsgError = "variable '" + Iden + "' was not declared";
+    LogError(MsgError, yylineno);
+    return nullptr;
+  }
   std::unique_ptr<ExprAST> UPExpr(nullptr);
   return new ReadExprAST(Iden, std::move(UPExpr));
 }
 
 ReadExprAST* HandleCmdRead(const std::string &Iden, grc::ExprAST *Expr) {
+  auto Sym = S->find(Iden);
+  if(!Sym) {
+    std::string MsgError = "variable '" + Iden + "' was not declared";
+    LogError(MsgError, yylineno);
+    return nullptr;
+  }
+  if(Expr->getResultingType() != BasicType::Int) {
+    std::string ErrorMsg = "index is not Int";
+    LogError(ErrorMsg, yylineno);
+    return nullptr;
+  }
   std::unique_ptr<ExprAST> UPExpr(Expr);
   return new ReadExprAST(Iden, std::move(UPExpr));
 } 
@@ -250,13 +304,13 @@ AssignExprAST* HandleAssign(const std::string &Op, VariableExprAST *Var, ExprAST
   //      TBT = BasicType::BoolArray;
   //    }
   //  }
-
+    
     if(ExprBT == VarBT) {   
       std::unique_ptr<VariableExprAST> UPVar(Var);
       std::unique_ptr<ExprAST> UPExpr(Expr);
       return new AssignExprAST(Op, std::move(UPVar), std::move(UPExpr));
     }else {
-        std::string ErrorMsg = "the type of expression and variable '" 
+        std::string ErrorMsg = "type of declaration and assignment of variable  '" 
           + Name + "' are different";
         LogError(ErrorMsg, yylineno);
         return nullptr;
@@ -392,7 +446,7 @@ PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params) {
 PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params, PrimitiveType* T) {
   std::vector<std::string> Args;
   std::vector<std::shared_ptr<Type>> TArgs;
-  
+ 
   for(int i = 0; i < Params->ListOfParams.size(); ++i) {
     auto Param = Params->ListOfParams[i].get();
     std::shared_ptr<PrimitiveType> SPPT = std::make_shared<PrimitiveType>(Param->BT,
@@ -420,9 +474,9 @@ PrototypeAST* HandlePrototype(const std::string &Name, Parameters* Params, Primi
   
   // start new scope
   S->initializeScope();
-  
+
   // insert args in symbol table
-  for(int i = Params->ListOfParams.size()-1; i >= 0; i--) {
+  for(int i = 0; i < Params->ListOfParams.size(); i++) {
     std::shared_ptr<VariableSymbol> SPVar = std::make_shared<VariableSymbol>(TArgs[i], true);
     // create a variable 
     if(S->insert(Params->ListOfParams[i]->Name, std::move(SPVar))) {

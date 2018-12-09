@@ -1,0 +1,9 @@
+import io
+
+def main() : int {
+  var a[3] = {1, 2, 3} : int;
+  
+  read a[i];
+
+  return 0;
+}

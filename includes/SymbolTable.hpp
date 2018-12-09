@@ -98,6 +98,7 @@ namespace grc {
     SymbolTable() {}
     bool insert(const std::string&, std::shared_ptr<Symbol>);
     std::shared_ptr<Symbol> find(const std::string&);
+    std::shared_ptr<Symbol> findCurrentSub();
     void toPrint(std::ofstream&);
   };
 }
