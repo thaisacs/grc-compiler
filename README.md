@@ -12,3 +12,12 @@ make
 ```
 
 ## Usage
+
+```
+Usage: grcc [options] -f <filename>
+Options:
+  -h           Display this information.
+  -O           Active optimization.
+  -l           Write scopes in file 'GRCLog.out'.
+  -v           Display IR.
+```
