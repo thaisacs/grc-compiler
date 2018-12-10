@@ -441,9 +441,58 @@ BasicType BinaryExprAST::getResultingType() {
 //// TernaryExprAST
 ////===----------------------------------------------------------------------===//
 
-llvm::Value* TernaryExprAST::codegen() {}
+llvm::Value* TernaryExprAST::codegen() {
+  llvm::Value *TestV = Test->codegen();
+  if(!TestV)
+    return nullptr;
+  
+  llvm::Function *TheFunction = Builder.GetInsertBlock()->getParent();
+  
+  llvm::BasicBlock *ThenBB = llvm::BasicBlock::Create(TheContext, "then", TheFunction);
+  llvm::BasicBlock *ElseBB = llvm::BasicBlock::Create(TheContext, "else");
+  llvm::BasicBlock *MergeBB = llvm::BasicBlock::Create(TheContext, "ternarycont");
 
-BasicType TernaryExprAST::getResultingType() {}
+  Builder.CreateCondBr(TestV, ThenBB, ElseBB);
+
+  Builder.SetInsertPoint(ThenBB);
+
+  llvm::Value *ThenV = Then->codegen();
+  if (!Then){
+    return nullptr;
+  }
+
+  Builder.CreateBr(MergeBB);
+  
+  ThenBB = Builder.GetInsertBlock();
+
+  TheFunction->getBasicBlockList().push_back(ElseBB);
+  Builder.SetInsertPoint(ElseBB);
+  llvm::Value *ElseV = Else->codegen();
+  if (!ElseV)
+     return nullptr;
+  
+  Builder.CreateBr(MergeBB);
+  ElseBB = Builder.GetInsertBlock();
+
+  TheFunction->getBasicBlockList().push_back(MergeBB);
+  Builder.SetInsertPoint(MergeBB);
+  
+  llvm::PHINode *PN; 
+  if(Then->getResultingType() == BasicType::Int) 
+    PN = Builder.CreatePHI(llvm::Type::getInt32Ty(TheContext), 2, "ternary");
+  else 
+    PN = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "ternary");
+  
+  PN->addIncoming(ThenV, ThenBB);
+  PN->addIncoming(ElseV, ElseBB);
+
+  return PN;
+}
+
+BasicType TernaryExprAST::getResultingType() {
+  auto T = Then->getResultingType();
+  return T;
+}
 
 //===------------------------------------------------------------------------===//
 //// IfExprAST
@@ -599,39 +648,7 @@ llvm::Value* AssignExprAST::codegen() {
     llvm::Value *Result1 = Builder.CreateMul(RD, ExprVal, "resultmp");
     Result1 = Builder.CreateSub(VarValue, Result1, "resultmp");
   } 
-  
-  /*
-  std::shared_ptr<Symbol> Symb = S->find(Var->getName());
-  auto VarSymbol = static_cast<VariableSymbol*> (Symb.get());
-  
-  if(!VarSymbol)
-    return nullptr; 
  
-  auto VarBType = VarSymbol->getType()->getPrimitiveType()->getBasicType();
-  
-  llvm::Value *Variable = NamedValues[Var->getName()];
-  
-  if(!Variable)
-    return nullptr;
-
-  if(!VarSymbol->getType()->getArrayType()->isArray) {
-    Builder.CreateStore(Result, Variable);
-  }else {
-    if(VarSymbol->getArgument()) {
-      llvm::Value *Element = Builder.CreateLoad(Variable, Var->getName().c_str());
-      llvm::Value *I = Var->getIndex();
-      llvm::Value *V = Builder.CreateGEP(Element, I);
-      Builder.CreateStore(Result, V);
-    }else {
-      llvm::Value *I = Var->getIndex();
-      llvm::Type *Ty = llvm::IntegerType::getInt32Ty(TheContext);
-      llvm::Type *TA = llvm::ArrayType::get(Ty, VarSymbol->getType()->getArrayType()->Size);
-      llvm::Value *PtrArray = Builder.CreateConstGEP2_32(TA, Variable, 0, 0);
-      llvm::Value *Num = Builder.CreateGEP(PtrArray, I);
-      Builder.CreateStore(Result, Num);
-    }
-  }*/
-
   llvm::Value *AllocaVar = Var->getAllocaCodegen();
 
   Builder.CreateStore(Result, AllocaVar);
@@ -756,11 +773,12 @@ llvm::Value* VarExprAST::codegen() {
         StringExprAST *StringInit = static_cast<StringExprAST*>(Init);
         std::string S = StringInit->getString();
         unsigned j;
-        for(unsigned j = 1; j < S.size()-1; j++) {
+        for(j = 1; j < S.size()-1; j++) {
           int c = (int)S[j];
           llvm::Value *Base = Builder.CreateGEP(PtrArray, Builder.getInt32(j-1));
           Builder.CreateStore(Builder.getInt8(c), Base); 
         }
+        
         llvm::Value *Base = Builder.CreateGEP(PtrArray, Builder.getInt32(j-1));
         Builder.CreateStore(Builder.getInt8(0), Base); 
       }
@@ -918,7 +936,7 @@ BasicType CallExprAST::getResultingType() {
     }
     return SubSymbol->getType()->getPrimitiveType()->getBasicType();
   }
-  std::string MsgError = "subrotina '" + Callee + "' não foi declarada no escopo corrente";
+  std::string MsgError = "subroutine '" + Callee + "' was not declared";
   LogError(MsgError, yylineno);
   return BasicType::Undefined;
 }

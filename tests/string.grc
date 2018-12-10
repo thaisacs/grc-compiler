@@ -1,0 +1,16 @@
+import io
+
+def print_name(name : string) {
+  write "%s", name;
+  return;  
+}
+
+def main() : int {
+  var name = "thais" : string;
+  var s = "grcc is the best" : string;
+
+  print_name(name);
+  write "sentence: %s", s;
+
+  return 0;  
+}

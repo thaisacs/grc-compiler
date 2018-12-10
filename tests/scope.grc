@@ -1,0 +1,18 @@
+import io
+
+def main() : int {
+  var a = 10: int;
+
+  write "%d", a;
+
+  if(true) {
+    var a = "thais": string;
+    write "%s", a;
+  }
+
+  a += 50;
+
+  write "%d", a;
+
+  return 0;  
+}

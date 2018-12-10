@@ -20,7 +20,6 @@ string     "\"".*"\""
 "*" |
 "/" |
 "%" |
-":" |
 "{" |
 "}" |
 "(" |
@@ -52,6 +51,7 @@ string     "\"".*"\""
 "||" { return OR;    }
 "!"  { return NOT;   }
 "?"  { return QUEST; }
+":"  { return POINTS;}
 
 "int"    { return TYPE_INT;    }
 "bool"   { return TYPE_BOOL;   }

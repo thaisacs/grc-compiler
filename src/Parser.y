@@ -66,7 +66,7 @@
 %token <N> NUMBER 
 %token <F> ASSIGN_STEP ASSIGN
 
-%right QUEST
+%right QUEST POINTS
 %left OR
 %left AND 
 %left EQUAL DIFF
@@ -85,8 +85,8 @@
 %type <LB> listOfBoolH listOfBoolB 
 %type <LI> listOfIntH listOfIntB
 %type <E> exp boolExp intExp arrayInitVar expAssign cmd simpleCmd writeCmd 
-          callSub returnCmd readCmd assign assignInit ifCmd  whileCmd forCmd 
-          /*stopCmd skipCmd */
+          callSub returnCmd readCmd assign assignInit ifCmd  whileCmd forCmd
+          stopCmd skipCmd
 %type <V> simpleVar simpleInitVar arrayVar
 %type <PMT> type
 %type <B> block bodyH
@@ -105,7 +105,7 @@ decs: /*empty*/
     ;
 
 vars: /*empty*/
-    | vars varCmd { LogError("grcc does not support global variable"); }
+    | vars varCmd { LogError("faltas error: grcc does not support global variable"); }
 
 type: TYPE_INT                   { $$ = HandleType(grc::BasicType::Int, 0);      }
     | TYPE_BOOL                  { $$ = HandleType(grc::BasicType::Bool, 0);     }
@@ -113,8 +113,8 @@ type: TYPE_INT                   { $$ = HandleType(grc::BasicType::Int, 0);     
     | TYPE_STRING '[' NUMBER ']' { $$ = HandleType(grc::BasicType::String, $3);  }
     ;
 
-prototype: DEF IDENTIFIER '(' listOfParams ')'          { $$ = HandlePrototype($2, $4);     }
-         | DEF IDENTIFIER '(' listOfParams ')' ':' type { $$ = HandlePrototype($2, $4, $7); }
+prototype: DEF IDENTIFIER '(' listOfParams ')'             { $$ = HandlePrototype($2, $4);     }
+         | DEF IDENTIFIER '(' listOfParams ')' POINTS type { $$ = HandlePrototype($2, $4, $7); }
          ; 
 
 decSub: prototype block { if($1 && $2) {
@@ -135,7 +135,7 @@ listOfParams: /*empty*/    { $$ = HandleListOfParams(); }
 listOfParamH: listOfParamB listOfParamT { HandleListOfParams($1, $2); $$ = $1; }
             ;
 
-listOfParamT: parametersH ':' type { HandleListOfParams($1, $3); $$ = $1; }
+listOfParamT: parametersH POINTS type { HandleListOfParams($1, $3); $$ = $1; }
             ;
 
 listOfParamB: /*empty*/      { $$ = HandleListOfParams(); } 
@@ -172,8 +172,8 @@ simpleCmd: varCmd     { /*default*/    }
          | ifCmd      { /*default*/    }
          | whileCmd   { /*default*/    }
          | forCmd     { /*default*/    }
-/*       | stopCmd    { /*default*     }
-         | skipCmd    { /*default*     }*/
+         | stopCmd    { /*default*/    }
+         | skipCmd    { /*default*/    }
          | error ';'  { LogError(""); 
                         $$ = nullptr;  }
          ;
@@ -207,9 +207,8 @@ assign: variable ASSIGN expAssign  { $$ = HandleAssign($1, $2, $3); }
 assignInit: variable ASSIGN_INIT expAssign { $$ = HandleAssign("=", $1, $3); }
           ;
 
-expAssign: exp                  { /*default*/ }
-         | callSub              { /*default*/ }
-/*       | ternaryCmd { /*default* }*/
+expAssign: exp        { /*default*/ }
+         | callSub    { /*default*/ }
          ;
 
 readCmd: READ IDENTIFIER ';'             { $$ = HandleCmdRead($2);     }
@@ -249,14 +248,14 @@ listOfCallValH: /*empty*/              { $$ = HandleCmdCall();  }
 listOfCallValB: /*empty*/          { $$ = HandleCmdCall(); }
               | listOfCallValH ',' { /*default*/           }
               ;
-/*
+
 stopCmd: STOP ';' { $$ = HandleCmdStopOrSkip(grc::BasicItCmd::Stop); }
        ;
 
 skipCmd: SKIP ';' { $$ = HandleCmdStopOrSkip(grc::BasicItCmd::Skip); }
        ;
-*/
-varCmd: VAR listOfVarH ':' type ';' { $$ = HandleVarCmd($2, $4); }
+
+varCmd: VAR listOfVarH POINTS type ';' { $$ = HandleVarCmd($2, $4); }
       ;
 
 listOfVarH: listOfVarB var { HandleListOfVar($1, $2); $$ = $1; }
@@ -304,29 +303,27 @@ listOfIntH: listOfIntB NUMBER { HandleInt($1, $2); $$ = $1; }
 listOfIntB: /*empty*/      { $$ = HandleListOfInt(); }
           | listOfIntH ',' { $$ = $1;                }
           ;
-/*
-ternaryCmd: exp '?' exp ':' exp {}
-          ;
-*/
-exp: '(' exp ')'            { $$ = $2;                             }
-   | exp '+' exp            { $$ = HandleExpression("+", $1, $3);  }
-   | exp '*' exp            { $$ = HandleExpression("*", $1, $3);  }
-   | exp '-' exp            { $$ = HandleExpression("-", $1, $3);  }
-   | exp '/' exp            { $$ = HandleExpression("/", $1, $3);  }
-   | exp '%' exp            { $$ = HandleExpression("%", $1, $3);  }
-   | exp CMP exp            { $$ = HandleExpression($2, $1, $3);   }
-   | exp EQUAL exp          { $$ = HandleExpression("==", $1, $3); }
-   | exp DIFF exp           { $$ = HandleExpression("!=", $1, $3); }
-   | exp AND exp            { $$ = HandleExpression("&&", $1, $3); }
-   | exp OR exp             { $$ = HandleExpression("||", $1, $3); }
-   | '-' exp %prec UMINUS   { $$ = HandleExpression("-", $2);      }
-   | NOT exp                { $$ = HandleExpression("!", $2);      }
-   | IDENTIFIER             { $$ = HandleVariable($1);             }
-   | IDENTIFIER '[' exp ']' { $$ = HandleVariable($1, $3);         }
-   | NUMBER                 { $$ = new grc::NumberExprAST($1);     }
-   | TRUE                   { $$ = new grc::BooleanExprAST(true);  }
-   | FALSE                  { $$ = new grc::BooleanExprAST(false); }
-   | WORD                   { $$ = new grc::StringExprAST($1);     }
+
+exp: '(' exp ')'              { $$ = $2;                             }
+   | exp '+' exp              { $$ = HandleExpression("+", $1, $3);  }
+   | exp '*' exp              { $$ = HandleExpression("*", $1, $3);  }
+   | exp '-' exp              { $$ = HandleExpression("-", $1, $3);  }
+   | exp '/' exp              { $$ = HandleExpression("/", $1, $3);  }
+   | exp '%' exp              { $$ = HandleExpression("%", $1, $3);  }
+   | exp CMP exp              { $$ = HandleExpression($2, $1, $3);   }
+   | exp EQUAL exp            { $$ = HandleExpression("==", $1, $3); }
+   | exp DIFF exp             { $$ = HandleExpression("!=", $1, $3); }
+   | exp AND exp              { $$ = HandleExpression("&&", $1, $3); }
+   | exp OR exp               { $$ = HandleExpression("||", $1, $3); }
+   | '-' exp %prec UMINUS     { $$ = HandleExpression("-", $2);      }
+   | NOT exp                  { $$ = HandleExpression("!", $2);      }
+   | exp QUEST exp POINTS exp { $$ = HandleExpression($1, $3, $5);   }
+   | IDENTIFIER               { $$ = HandleVariable($1);             }
+   | IDENTIFIER '[' exp ']'   { $$ = HandleVariable($1, $3);         }
+   | NUMBER                   { $$ = new grc::NumberExprAST($1);     }
+   | TRUE                     { $$ = new grc::BooleanExprAST(true);  }
+   | FALSE                    { $$ = new grc::BooleanExprAST(false); }
+   | WORD                     { $$ = new grc::StringExprAST($1);     }
    ;
 %%
 

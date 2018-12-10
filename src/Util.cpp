@@ -73,6 +73,27 @@ ExprAST* HandleExpression(uint8_t Op, ExprAST* ExprL, ExprAST* ExprR) {
   }
 }
 
+ExprAST* HandleExpression(ExprAST *Test, ExprAST *Then, ExprAST *Else) {
+  auto TestT = Test->getResultingType();
+  auto ThenT = Then->getResultingType();
+  auto ElseT = Else->getResultingType();
+
+  if(TestT != BasicType::Bool) {
+    std::string ErrorMsg = "conditional expression of the ternary operator must result in a value of the logical type";
+    LogError(ErrorMsg, yylineno);
+  }
+
+  if(ThenT != ElseT) {
+    std::string ErrorMsg = "expressions of the ternary operator must be equal";
+    LogError(ErrorMsg, yylineno);
+  }
+  
+  std::unique_ptr<ExprAST> UPTest(Test);
+  std::unique_ptr<ExprAST> UPThen(Then);
+  std::unique_ptr<ExprAST> UPElse(Else);
+
+  return new TernaryExprAST(std::move(UPTest), std::move(UPThen), std::move(UPElse));
+}
 //===------------------------------------------------------------------------===//
 //// Cmd: Return 
 ////===----------------------------------------------------------------------===//
@@ -181,47 +202,73 @@ void HandleCmdCall(Expressions *Exprs, ExprAST* Expr) {
 CallExprAST* HandleCmdCall(const std::string &Name, Expressions *Exprs) {
   Symbol *SubSymbol = (S->find(Name)).get();
  
-  //if(SubSymbol->getSymbolType() == SymbolType::Procedure) {
-  //  ProcedureSymbol *Proc = static_cast<ProcedureSymbol*>(SubSymbol);
-  //  if(Exprs->ListOfExprs.size() != Proc->getSizeArgs()) {
-  //    std::string ErrorMsg = "invalid arguments in procedure call '" 
-  //      + Name + "'";
-  //    LogError(ErrorMsg, yylineno);
-  //    return nullptr;
-  //  }
-  //  for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
-  //    auto TArg = Proc->getTypeArg(i);
-  //    auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
-  //    if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
-  //      std::string ErrorMsg = "invalid arguments in procedure call '" 
-  //        + Name + "'";
-  //      LogError(ErrorMsg, yylineno);
-  //      return nullptr;
-  //    }
-  //  }
-  //}else if(SubSymbol->getSymbolType() == SymbolType::Function) {
-  //  FunctionSymbol *Func = static_cast<FunctionSymbol*>(SubSymbol);
-  //  if(Exprs->ListOfExprs.size() != Func->getSizeArgs()) {
-  //    std::string ErrorMsg = "invalid arguments in function call '" 
-  //      + Name + "'";
-  //    LogError(ErrorMsg, yylineno);
-  //    return nullptr;
-  //  }
-  //  for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
-  //    auto TArg = Func->getTypeArg(i);
-  //    auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
-  //    if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
-  //      std::string ErrorMsg = "invalid arguments in function call '" 
-  //        + Name + "'";
-  //      LogError(ErrorMsg, yylineno);
-  //      return nullptr;
-  //    }
-  //  }
-  //}else {
-  //  std::string ErrorMsg = "'" + Name + "' is not a subroutine";
-  //  LogError(ErrorMsg, yylineno);
-  //  return nullptr;
-  //}
+  if(SubSymbol->getSymbolType() == SymbolType::Procedure) {
+    ProcedureSymbol *Proc = static_cast<ProcedureSymbol*>(SubSymbol);
+    if(Exprs->ListOfExprs.size() != Proc->getSizeArgs()) {
+      std::string ErrorMsg = "invalid arguments in procedure call '" 
+        + Name + "'";
+      LogError(ErrorMsg, yylineno);
+      return nullptr;
+    }
+    for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
+      auto TArg = Proc->getTypeArg(i);
+      auto TArgBT = TArg->getPrimitiveType()->getBasicType();
+      auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
+      
+      if(TArgBT == BasicType::Int) {
+        if(TArg->getArrayType()->isArray) {
+          TArgBT = BasicType::IntArray;
+        }
+      }else if(TArgBT == BasicType::Bool) {
+        if(TArg->getArrayType()->isArray) {
+          TArgBT = BasicType::BoolArray;
+        }
+      }
+
+      if(TArgBT != TExpr) {
+        std::string ErrorMsg = "invalid arguments in procedure call '" 
+          + Name + "'";
+        LogError(ErrorMsg, yylineno);
+        return nullptr;
+      }
+    }
+  }else if(SubSymbol->getSymbolType() == SymbolType::Function) {
+    FunctionSymbol *Func = static_cast<FunctionSymbol*>(SubSymbol);
+    if(Exprs->ListOfExprs.size() != Func->getSizeArgs()) {
+      std::string ErrorMsg = "invalid arguments in function call '" 
+        + Name + "'";
+      LogError(ErrorMsg, yylineno);
+      return nullptr;
+    }
+    for(unsigned i = 0; i < Exprs->ListOfExprs.size(); i++) {
+      
+      auto TArg = Func->getTypeArg(i);
+      auto TArgBT = TArg->getPrimitiveType()->getBasicType();
+      auto TExpr = Exprs->ListOfExprs[i]->getResultingType();
+      
+      if(TArgBT == BasicType::Int) {
+        if(TArg->getArrayType()->isArray) {
+          TArgBT = BasicType::IntArray;
+        }
+      }else if(TArgBT == BasicType::Bool) {
+        if(TArg->getArrayType()->isArray) {
+          TArgBT = BasicType::BoolArray;
+        }
+      }
+      
+      if(TArg->getPrimitiveType()->getBasicType() != TExpr) {
+        std::string ErrorMsg = "invalid arguments in function call '" 
+          + Name + "'";
+        LogError(ErrorMsg, yylineno);
+        return nullptr;
+      }
+    }
+  }else {
+    std::string ErrorMsg = "'" + Name + "' is not a subroutine";
+    LogError(ErrorMsg, yylineno);
+    return nullptr;
+  }
+
   return new CallExprAST(Name, std::move(Exprs->ListOfExprs));
 }
 
@@ -282,6 +329,7 @@ ReadExprAST* HandleCmdRead(const std::string &Iden, grc::ExprAST *Expr) {
 AssignExprAST* HandleAssign(const std::string &Op, VariableExprAST *Var, ExprAST* Expr) {
   std::string Name = Var->getName(); 
   std::shared_ptr<Symbol> Sym = S->find(Name);
+  
   if(Sym == nullptr) {
     std::string MsgError = "variable '" + Name + "' was not declared";
     LogError(MsgError, yylineno);
@@ -291,20 +339,18 @@ AssignExprAST* HandleAssign(const std::string &Op, VariableExprAST *Var, ExprAST
       std::string MsgError = "'" + Name + "' is not a variable to receive assignment";
       LogError(MsgError, yylineno);
       return nullptr;
-    } 
+    }
+
     auto ExprBT = Expr->getResultingType();
     auto VarBT = Var->getResultingType();
 
-  //  if(TBT == BasicType::Int) {
-  //    if(TAT->isArray) {
-  //      TBT = BasicType::IntArray;
-  //    }
-  //  }else if(TBT == BasicType::Bool) {
-  //    if(TAT->isArray) {
-  //      TBT = BasicType::BoolArray;
-  //    }
-  //  }
-    
+
+    if(VarBT == BasicType::String) {
+      std::string MsgError = "grcc does not support assignment in string variable";
+      LogError(MsgError, yylineno);
+      return nullptr;
+    }
+
     if(ExprBT == VarBT) {   
       std::unique_ptr<VariableExprAST> UPVar(Var);
       std::unique_ptr<ExprAST> UPExpr(Expr);
@@ -725,10 +771,10 @@ void HandleImportIO() {
 //// Stop Or Skip
 ////===----------------------------------------------------------------------===//
 
-/*
+
 StopOrSkipExprAST* HandleCmdStopOrSkip(BasicItCmd Type) {
   std::string ErrorMsg = "faltal error: grcc does not yet support stop and skip";
   LogError(ErrorMsg); 
-  exit(1);
+  return new StopOrSkipExprAST(Type);
 }
-*/
+

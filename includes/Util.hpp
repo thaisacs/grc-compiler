@@ -60,6 +60,7 @@ grc::VariableExprAST* HandleVariable(const std::string&, const std::string&);
 grc::ExprAST* HandleExpression(const std::string&, grc::ExprAST*, grc::ExprAST*);
 grc::ExprAST* HandleExpression(const std::string&, grc::ExprAST*);
 grc::ExprAST* HandleExpression(uint8_t, grc::ExprAST*, grc::ExprAST*);
+grc::ExprAST* HandleExpression(grc::ExprAST *Test, grc::ExprAST *Then, grc::ExprAST *Else);
 
 //===------------------------------------------------------------------------===//
 //// Cmds 

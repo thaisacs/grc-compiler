@@ -1,9 +1,14 @@
-import io
+var a : int;
+
+def teste(a, b : int; c : bool) : bool {
+  return a + b;
+}
 
 def main() : int {
-  var a[3] = {1, 2, 3} : int;
+  skip;
+  stop;  
   
-  read a[i];
-
+  teste(4); 
+  
   return 0;
 }
