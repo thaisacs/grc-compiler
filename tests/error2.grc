@@ -1,0 +1,12 @@
+def main() {
+  var a, b[5] : int;
+  var c, d[5] : bool;
+
+  a = "teste";
+  b = 5;
+  b[0] = true;
+  c = 5;
+  d[0] = 5; 
+   
+  return 0;  
+}

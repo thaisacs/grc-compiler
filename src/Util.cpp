@@ -356,7 +356,7 @@ AssignExprAST* HandleAssign(const std::string &Op, VariableExprAST *Var, ExprAST
       std::unique_ptr<ExprAST> UPExpr(Expr);
       return new AssignExprAST(Op, std::move(UPVar), std::move(UPExpr));
     }else {
-        std::string ErrorMsg = "type of declaration and assignment of variable  '" 
+        std::string ErrorMsg = "type of declaration and assignment of variable '" 
           + Name + "' are different";
         LogError(ErrorMsg, yylineno);
         return nullptr;
@@ -595,7 +595,7 @@ VarExprAST* HandleVarCmd(Variables *Vars, PrimitiveType *T) {
           LogError(ErrorMsg, yylineno);
         }
       }else {
-        std::string ErrorMsg = "type of declaration and assignment of variable  '" 
+        std::string ErrorMsg = "type of declaration and assignment of variable '" 
           + Var->getName() + "' are different";
         LogError(ErrorMsg, yylineno);
       }
