@@ -8,7 +8,7 @@ https://din-ilp2018.readthedocs.io/en/latest/.
 ```
 mkdir build && cd build
 cmake ..
-make
+make install
 ```
 
 ## Usage
